@@ -4,5 +4,6 @@ export interface ChatMessage {
   author: string
   time: number
   trackUrl?: string
+  imageUrl?: string
 }
 

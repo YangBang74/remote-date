@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { roomAPI } from '@/shared/api/room.api'
 import type { VideoRoom } from '@/shared/api/room.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
+import SoundPlayerBar from './ui/SoundPlayerBar.vue'
 import { socketService } from '@/shared/api/socket.service'
 import { useChat } from '@/shared/composables/useChat'
 import { soundCloudAPI } from '@/shared/api/soundcloud.api'
 import { toast } from 'vue-sonner'
+import RoomChatPanel from './ui/RoomChatPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,31 +21,23 @@ const room = ref<VideoRoom | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const participants = ref(0)
-const { messages, newMessage, send } = useChat(roomId)
+const { messages, newMessage, send, currentUserName } = useChat(roomId)
 
 const searchQuery = ref('')
 const currentTrackUrl = ref<string | null>(null)
 const currentTrackTitle = ref<string | null>(null)
 const currentTrackArtist = ref<string | null>(null)
+const currentArtworkUrl = ref<string | null>(null)
 const audioRef = ref<HTMLAudioElement | null>(null)
 const isPlaying = ref(false)
 const currentTime = ref(0)
 const duration = ref(0)
+const volume = ref(100)
+const muted = ref(false)
 const isSearching = ref(false)
 const suggestions = ref<
   Awaited<ReturnType<typeof soundCloudAPI.searchTracks>>
 >([])
-const formattedTime = computed(() => {
-  const mins = Math.floor(currentTime.value / 60)
-  const secs = Math.floor(currentTime.value % 60)
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-})
-const formattedDuration = computed(() => {
-  const mins = Math.floor(duration.value / 60)
-  const secs = Math.floor(duration.value % 60)
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-})
-
 function loadTrack() {
   if (!searchQuery.value.trim()) {
     toast.error('Please enter a SoundCloud track URL')
@@ -61,6 +55,15 @@ function loadTrack() {
   } else {
     toast.error('Right now only direct SoundCloud track URLs are supported.')
   }
+}
+
+function loadTrackFromChat(url: string) {
+  if (!url) return
+  searchQuery.value = url
+  currentTrackUrl.value = url
+  currentTrackTitle.value = 'Shared track'
+  currentTrackArtist.value = null
+  toast.success('Track from chat loaded to player')
 }
 
 async function searchSuggestions(query: string) {
@@ -115,6 +118,7 @@ function selectSuggestion(url: string) {
   currentTrackUrl.value = track.streamUrl
   currentTrackTitle.value = track.title ?? null
   currentTrackArtist.value = track.username ?? null
+  currentArtworkUrl.value = track.artworkUrl ?? null
   suggestions.value = []
   toast.success('Track selected from suggestions.')
 }
@@ -134,6 +138,9 @@ function onLoadedMetadata() {
   const audio = audioRef.value
   if (!audio) return
   duration.value = audio.duration || 0
+  // Sync initial volume state with the audio element
+  volume.value = (audio.volume ?? 1) * 100
+  muted.value = audio.muted
 }
 
 function onTimeUpdate() {
@@ -156,6 +163,32 @@ function seek(e: Event) {
   const target = e.target as HTMLInputElement
   const value = Number(target.value)
   audio.currentTime = (value / 100) * (duration.value || 1)
+}
+
+function toggleMute() {
+  const audio = audioRef.value
+  if (!audio) return
+
+  const nextMuted = !audio.muted
+  audio.muted = nextMuted
+  muted.value = nextMuted
+}
+
+function changeVolume(value: number) {
+  const audio = audioRef.value
+  if (!audio) return
+
+  const clamped = Math.max(0, Math.min(100, value))
+  volume.value = clamped
+  audio.volume = clamped / 100
+
+  if (clamped === 0) {
+    audio.muted = true
+    muted.value = true
+  } else if (muted.value && audio.muted) {
+    audio.muted = false
+    muted.value = false
+  }
 }
 
 onMounted(async () => {
@@ -195,7 +228,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="p-6 space-y-4">
+  <div class="p-6 space-y-4 relative">
     <Card v-if="loading">
       <CardContent class="p-6">
         <Skeleton class="w-full h-96" />
@@ -208,6 +241,7 @@ onMounted(async () => {
     </div>
 
     <div v-else-if="room" class="grid gap-4 md:grid-cols-[2fr,1fr]">
+      <!-- Left column: player & search -->
       <div class="space-y-4">
         <Card>
           <CardHeader>
@@ -251,77 +285,41 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div class="space-y-2">
-              <div class="flex items-center gap-3">
-                <Button size="icon" variant="outline" @click="togglePlay" :disabled="!currentTrackUrl">
-                  <span v-if="!isPlaying">▶</span>
-                  <span v-else>⏸</span>
-                </Button>
-
-                <div class="flex-1 flex flex-col gap-1">
-                  <div class="flex items-center justify-between text-xs text-muted-foreground">
-                    <span class="truncate">
-                      {{ currentTrackTitle || 'No track selected' }}
-                      <span v-if="currentTrackArtist" class="ml-1">· {{ currentTrackArtist }}</span>
-                    </span>
-                    <span>{{ formattedTime }} / {{ formattedDuration }}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="1"
-                    class="w-full"
-                    :value="duration ? (currentTime / duration) * 100 : 0"
-                    @input="seek"
-                  />
-                </div>
-              </div>
-              <audio
-                ref="audioRef"
-                :src="currentTrackUrl || undefined"
-                @loadedmetadata="onLoadedMetadata"
-                @timeupdate="onTimeUpdate"
-                @play="onPlay"
-                @pause="onPause"
-              />
-            </div>
+            <SoundPlayerBar
+              :title="currentTrackTitle || 'No track selected'"
+              :artist="currentTrackArtist || ''"
+              :artwork-url="currentArtworkUrl || suggestions[0]?.artworkUrl || ''"
+              :is-playing="isPlaying"
+              :current-time="currentTime"
+              :duration="duration"
+              :can-play="!!currentTrackUrl"
+              :volume="volume"
+              :muted="muted"
+              @togglePlay="togglePlay"
+              @seek="(value) => seek({ target: { value: String(value) } } as any)"
+              @toggleMute="toggleMute"
+              @changeVolume="changeVolume" />
+            <audio
+              ref="audioRef"
+              :src="currentTrackUrl || undefined"
+              @loadedmetadata="onLoadedMetadata"
+              @timeupdate="onTimeUpdate"
+              @play="onPlay"
+              @pause="onPause"
+            />
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Chat</CardTitle>
-        </CardHeader>
-        <CardContent class="space-y-2">
-          <div class="h-80 overflow-y-auto border rounded-md p-2 space-y-1 text-sm">
-            <div v-for="(msg, idx) in messages" :key="idx">
-              <span class="font-semibold">{{ msg.author }}: </span>
-              <span>{{ msg.text }}</span>
-              <a
-                v-if="msg.trackUrl"
-                :href="msg.trackUrl"
-                target="_blank"
-                rel="noopener"
-                class="text-blue-500 underline ml-1"
-              >
-                track
-              </a>
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <input
-              v-model="newMessage"
-              type="text"
-              class="flex-1 px-3 py-2 border rounded-md text-sm"
-              placeholder="Send message or paste track link"
-              @keyup.enter="send"
-            />
-            <Button size="sm" @click="send">Send</Button>
-          </div>
-        </CardContent>
-      </Card>
+      <!-- Right column: chat -->
+      <RoomChatPanel
+        :messages="messages"
+        :new-message="newMessage"
+        :current-user-name="currentUserName"
+        @update:new-message="(v) => (newMessage = v)"
+        @send="send"
+        @playTrack="loadTrackFromChat"
+      />
     </div>
   </div>
 </template>

@@ -7,12 +7,24 @@ import { useAuth } from '@/enteties/useAuth'
 export function useChat(roomId: string) {
   const messages = ref<ChatMessage[]>([])
   const newMessage = ref('')
+  const currentUserName = ref<string | null>(null)
   const { user, checkAuth } = useAuth()
 
   onMounted(async () => {
     // Пытаемся подтянуть пользователя, если есть токены
     try {
       await checkAuth()
+
+      const u = user.value
+      if (u) {
+        const displayName =
+          u.firstName && u.lastName
+            ? `${u.firstName} ${u.lastName}`
+            : u.firstName
+            ? u.firstName
+            : u.email || 'Guest'
+        currentUserName.value = displayName
+      }
     } catch (e) {
       console.error('checkAuth in useChat failed', e)
     }
@@ -45,8 +57,30 @@ export function useChat(roomId: string) {
     if (!newMessage.value.trim()) return
 
     const text = newMessage.value.trim()
-    const urlRegex = /https?:\/\/\S+/
-    const match = urlRegex.exec(text)
+    const urlRegex = /https?:\/\/\S+/g
+    const urls = text.match(urlRegex) || []
+
+    // В SoundCloud room считаем музыкальными только ссылки на SoundCloud
+    const isSoundCloudUrl = (url: string) =>
+      /^https?:\/\/(soundcloud\.com|on\.soundcloud\.com)\//i.test(url)
+
+    const isImageUrl = (url: string) =>
+      /\.(png|jpe?g|gif|webp)$/i.test(url) ||
+      url.includes('image=') ||
+      url.includes('img=') ||
+      url.includes('photo=')
+
+    let trackUrl: string | undefined
+    let imageUrl: string | undefined
+
+    for (const url of urls) {
+      if (!trackUrl && isSoundCloudUrl(url)) {
+        trackUrl = url
+      }
+      if (!imageUrl && isImageUrl(url)) {
+        imageUrl = url
+      }
+    }
     console.log('user', user.value)
     const displayName =
       user.value?.firstName && user.value?.lastName
@@ -55,18 +89,21 @@ export function useChat(roomId: string) {
         ? user.value.firstName
         : user.value?.email || 'Guest'
 
+    currentUserName.value = displayName
+
     const msg: ChatMessage = {
       room: roomId,
       author: displayName,
       text,
       time: Date.now(),
-      trackUrl: match ? match[0] : undefined,
+      trackUrl,
+      imageUrl,
     }
 
     socketService.emit('chat:send', msg)
     newMessage.value = ''
   }
 
-  return { messages, newMessage, send }
+  return { messages, newMessage, send, currentUserName }
 }
 
