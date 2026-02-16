@@ -10,7 +10,6 @@ import { socketService } from '@/shared/api/socket.service'
 import { useChat } from '@/shared/composables/useChat'
 import { soundCloudAPI } from '@/shared/api/soundcloud.api'
 import { toast } from 'vue-sonner'
-import { useAuth } from '@/enteties/useAuth'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,9 +19,6 @@ const room = ref<VideoRoom | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const participants = ref(0)
-
-const { user } = useAuth()
-
 const { messages, newMessage, send } = useChat(roomId)
 
 const searchQuery = ref('')
@@ -33,8 +29,6 @@ const audioRef = ref<HTMLAudioElement | null>(null)
 const isPlaying = ref(false)
 const currentTime = ref(0)
 const duration = ref(0)
-const statusMessage = ref<string | null>(null)
-const statusType = ref<'success' | 'error' | 'info'>('info')
 const isSearching = ref(false)
 const suggestions = ref<
   Awaited<ReturnType<typeof soundCloudAPI.searchTracks>>

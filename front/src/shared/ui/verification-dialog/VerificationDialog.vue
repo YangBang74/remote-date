@@ -162,7 +162,7 @@ const handleClose = () => {
           <Label>Verification Code</Label>
           <div class="flex items-center justify-between gap-2" @paste.prevent="handlePaste">
             <input
-              v-for="(value, index) in codeInputs"
+              v-for="(_, index) in codeInputs"
               :key="index"
               :ref="(el) => (inputRefs[index] = el as HTMLInputElement)"
               v-model="codeInputs[index]"
