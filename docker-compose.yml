@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: remote-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  back:
+    build: ./back
+    container_name: remote-back
+    restart: unless-stopped
+    environment:
+      PORT: 5000
+      # В контейнере mongo хост называется "mongo"
+      MONGO_URL: mongodb://mongo:27017/remote
+      # Для разработки, в проде поменять
+      JWT_SECRET: super-secret-dev
+      JWT_EXPIRES_IN: 7d
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+    volumes:
+      - ./back:/app
+      - /app/node_modules
+
+  front:
+    build: ./front
+    container_name: remote-front
+    restart: unless-stopped
+    environment:
+      # Этот URL попадает в браузер, поэтому localhost
+      VITE_API_URL: http://localhost:5000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - back
+    volumes:
+      - ./front:/app
+      - /app/node_modules
+
+volumes:
+  mongo_data:
