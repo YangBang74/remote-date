@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { roomAPI } from '@/shared/api/room.api'
 import type { VideoRoom } from '@/shared/api/room.types'
@@ -9,6 +9,8 @@ import { Skeleton } from '@/shared/ui/skeleton'
 import { socketService } from '@/shared/api/socket.service'
 import { useChat } from '@/shared/composables/useChat'
 import { soundCloudAPI } from '@/shared/api/soundcloud.api'
+import { toast } from 'vue-sonner'
+import { useAuth } from '@/enteties/useAuth'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,60 +21,38 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const participants = ref(0)
 
+const { user } = useAuth()
+
 const { messages, newMessage, send } = useChat(roomId)
 
 const searchQuery = ref('')
-const currentTrackPermalink = ref<string | null>(null)
+const currentTrackUrl = ref<string | null>(null)
 const currentTrackTitle = ref<string | null>(null)
 const currentTrackArtist = ref<string | null>(null)
+const audioRef = ref<HTMLAudioElement | null>(null)
+const isPlaying = ref(false)
+const currentTime = ref(0)
+const duration = ref(0)
 const statusMessage = ref<string | null>(null)
 const statusType = ref<'success' | 'error' | 'info'>('info')
 const isSearching = ref(false)
-const suggestions = ref<Awaited<ReturnType<typeof soundCloudAPI.searchTracks>>>([])
-
-// SoundCloud Widget
-const widgetIframeRef = ref<HTMLIFrameElement | null>(null)
-const widgetInstance = ref<any | null>(null)
-const widgetReady = ref(false)
-const isLocalAction = ref(false)
-
-type ToastType = 'success' | 'error' | 'info'
-interface Toast {
-  id: number
-  message: string
-  type: ToastType
-}
-const toasts = ref<Toast[]>([])
-let toastId = 0
-
-function showToast(type: ToastType, message: string) {
-  statusType.value = type
-  statusMessage.value = message
-  const id = ++toastId
-  toasts.value.push({ id, message, type })
-  setTimeout(() => {
-    toasts.value = toasts.value.filter((t) => t.id !== id)
-  }, 3000)
-}
-
-const embedUrl = computed(() => {
-  if (!currentTrackPermalink.value) return ''
-  const url = new URL('https://w.soundcloud.com/player/')
-  url.searchParams.set('url', currentTrackPermalink.value)
-  url.searchParams.set('auto_play', 'false')
-  url.searchParams.set('show_comments', 'false')
-  url.searchParams.set('visual', 'false')
-  url.searchParams.set('hide_related', 'true')
-  url.searchParams.set('show_user', 'false')
-  url.searchParams.set('show_reposts', 'false')
-  return url.toString()
+const suggestions = ref<
+  Awaited<ReturnType<typeof soundCloudAPI.searchTracks>>
+>([])
+const formattedTime = computed(() => {
+  const mins = Math.floor(currentTime.value / 60)
+  const secs = Math.floor(currentTime.value % 60)
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+})
+const formattedDuration = computed(() => {
+  const mins = Math.floor(duration.value / 60)
+  const secs = Math.floor(duration.value % 60)
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 })
 
 function loadTrack() {
-  statusMessage.value = null
-
   if (!searchQuery.value.trim()) {
-    showToast('error', 'Please enter a SoundCloud track URL')
+    toast.error('Please enter a SoundCloud track URL')
     return
   }
 
@@ -80,20 +60,12 @@ function loadTrack() {
 
   // Простая логика: если это URL — встраиваем, иначе игнорируем.
   if (value.startsWith('http://') || value.startsWith('https://')) {
-    currentTrackPermalink.value = value
+    currentTrackUrl.value = value
     currentTrackTitle.value = 'Custom URL'
     currentTrackArtist.value = null
-    showToast('success', 'Track loaded. You can control playback in the player.')
-
-    // Отправляем событие выбора трека другим участникам
-    socketService.emit('soundcloud:track_selected', {
-      roomId,
-      permalink: value,
-      title: 'Custom URL',
-      artist: null,
-    })
+    toast.success('Track loaded. You can control playback in the player.')
   } else {
-    showToast('error', 'Right now only direct SoundCloud track URLs are supported.')
+    toast.error('Right now only direct SoundCloud track URLs are supported.')
   }
 }
 
@@ -109,7 +81,7 @@ async function searchSuggestions(query: string) {
     suggestions.value = tracks
   } catch (e: any) {
     console.error(e)
-    showToast('error', e.message || 'Failed to search tracks')
+    toast.error(e.message || 'Failed to search tracks')
   } finally {
     isSearching.value = false
   }
@@ -119,8 +91,6 @@ let searchDebounce: number | undefined
 watch(
   searchQuery,
   (val) => {
-    statusMessage.value = null
-
     if (searchDebounce) {
       clearTimeout(searchDebounce)
     }
@@ -130,32 +100,68 @@ watch(
       return
     }
 
-    searchDebounce = setTimeout(() => {
+    searchDebounce = window.setTimeout(() => {
       searchSuggestions(val)
-    }, 500) as any
+    }, 500)
   }
 )
 
 function selectSuggestion(url: string) {
   const track = suggestions.value.find((t) => t.permalinkUrl === url)
   if (!track) {
-    showToast('error', 'Track not found in suggestions.')
+    toast.error('Track not found in suggestions.')
     return
   }
 
-  currentTrackPermalink.value = track.permalinkUrl
+  if (!track.streamUrl) {
+    toast.error('This track cannot be played with custom player (no stream URL).')
+    return
+  }
+
+  currentTrackUrl.value = track.streamUrl
   currentTrackTitle.value = track.title ?? null
   currentTrackArtist.value = track.username ?? null
-  showToast('success', 'Track selected from suggestions.')
   suggestions.value = []
+  toast.success('Track selected from suggestions.')
+}
 
-  // Отправляем событие выбора трека другим участникам
-  socketService.emit('soundcloud:track_selected', {
-    roomId,
-    permalink: track.permalinkUrl,
-    title: track.title ?? null,
-    artist: track.username ?? null,
-  })
+function togglePlay() {
+  const audio = audioRef.value
+  if (!audio || !currentTrackUrl.value) return
+
+  if (audio.paused) {
+    audio.play()
+  } else {
+    audio.pause()
+  }
+}
+
+function onLoadedMetadata() {
+  const audio = audioRef.value
+  if (!audio) return
+  duration.value = audio.duration || 0
+}
+
+function onTimeUpdate() {
+  const audio = audioRef.value
+  if (!audio) return
+  currentTime.value = audio.currentTime || 0
+}
+
+function onPlay() {
+  isPlaying.value = true
+}
+
+function onPause() {
+  isPlaying.value = false
+}
+
+function seek(e: Event) {
+  const audio = audioRef.value
+  if (!audio) return
+  const target = e.target as HTMLInputElement
+  const value = Number(target.value)
+  audio.currentTime = (value / 100) * (duration.value || 1)
 }
 
 onMounted(async () => {
@@ -185,180 +191,11 @@ onMounted(async () => {
       }
     })
 
-    // Слушаем события выбора трека от других участников
-    socketService.on('soundcloud:track_selected', (data) => {
-      currentTrackPermalink.value = data.permalink
-      currentTrackTitle.value = data.title
-      currentTrackArtist.value = data.artist
-      // Переинициализируем виджет при смене трека
-      widgetReady.value = false
-      nextTick(() => {
-        initWidget()
-      })
-    })
-
-    // Слушаем события play/pause от других участников
-    socketService.on('soundcloud:play', () => {
-      console.log('SoundCloud: received play event from socket')
-      if (!isLocalAction.value && widgetInstance.value && widgetReady.value) {
-        console.log('SoundCloud: executing play on widget')
-        isLocalAction.value = true
-        try {
-          widgetInstance.value.play()
-        } catch (e) {
-          console.error('Widget play error', e)
-        }
-        setTimeout(() => {
-          isLocalAction.value = false
-        }, 500)
-      } else {
-        console.log('SoundCloud: play skipped', {
-          isLocalAction: isLocalAction.value,
-          hasWidget: !!widgetInstance.value,
-          widgetReady: widgetReady.value,
-        })
-      }
-    })
-
-    socketService.on('soundcloud:pause', () => {
-      console.log('SoundCloud: received pause event from socket')
-      if (!isLocalAction.value && widgetInstance.value && widgetReady.value) {
-        console.log('SoundCloud: executing pause on widget')
-        isLocalAction.value = true
-        try {
-          widgetInstance.value.pause()
-        } catch (e) {
-          console.error('Widget pause error', e)
-        }
-        setTimeout(() => {
-          isLocalAction.value = false
-        }, 500)
-      } else {
-        console.log('SoundCloud: pause skipped', {
-          isLocalAction: isLocalAction.value,
-          hasWidget: !!widgetInstance.value,
-          widgetReady: widgetReady.value,
-        })
-      }
-    })
-
     loading.value = false
   } catch (err: any) {
     console.error(err)
     error.value = err.message || 'Failed to load SoundCloud room'
     loading.value = false
-  }
-})
-
-function handleIframeLoad() {
-  console.log('SoundCloud iframe loaded')
-  const timerId = setTimeout(() => {
-    initWidget()
-  }, 500)
-  return timerId
-}
-
-async function initWidget() {
-  await nextTick()
-  await nextTick() // Дополнительная задержка для загрузки iframe
-  
-  const iframe = widgetIframeRef.value
-  const SC = (window as any).SC
-
-  if (!iframe) {
-    console.warn('SoundCloud widget: iframe not found')
-    return
-  }
-
-  if (!SC || !SC.Widget) {
-    console.warn('SoundCloud widget: SC.Widget not available, retrying...')
-    const timerId = setTimeout(() => {
-      initWidget()
-    }, 500)
-    return timerId
-  }
-
-  // Если виджет уже инициализирован, не переинициализируем
-  if (widgetInstance.value) {
-    console.log('SoundCloud widget: already initialized')
-    return
-  }
-
-  try {
-    console.log('SoundCloud widget: initializing...')
-    const widget = SC.Widget(iframe)
-    widgetInstance.value = widget
-    widgetReady.value = false
-
-    widget.bind(SC.Widget.Events.READY, () => {
-      console.log('SoundCloud widget: READY')
-      widgetReady.value = true
-    })
-
-    widget.bind(SC.Widget.Events.PLAY_PROGRESS, () => {
-      // Это событие срабатывает во время воспроизведения
-    })
-
-    widget.bind(SC.Widget.Events.PLAY, () => {
-      console.log('SoundCloud widget: PLAY event received', {
-        isLocalAction: isLocalAction.value,
-        widgetReady: widgetReady.value,
-      })
-      if (!isLocalAction.value && widgetReady.value) {
-        console.log('SoundCloud widget: emitting play to socket')
-        socketService.emit('soundcloud:play', { roomId })
-      } else {
-        console.log('SoundCloud widget: play event ignored (local action or not ready)')
-      }
-    })
-
-    widget.bind(SC.Widget.Events.PAUSE, () => {
-      console.log('SoundCloud widget: PAUSE event received', {
-        isLocalAction: isLocalAction.value,
-        widgetReady: widgetReady.value,
-      })
-      if (!isLocalAction.value && widgetReady.value) {
-        console.log('SoundCloud widget: emitting pause to socket')
-        socketService.emit('soundcloud:pause', { roomId })
-      } else {
-        console.log('SoundCloud widget: pause event ignored (local action or not ready)')
-      }
-    })
-
-    widget.bind(SC.Widget.Events.FINISH, () => {
-      console.log('SoundCloud widget: FINISH event')
-    })
-
-    console.log('SoundCloud widget: bindings set up')
-  } catch (e) {
-    console.error('Failed to init SoundCloud widget', e)
-  }
-}
-
-// Инициализируем виджет при изменении embedUrl
-watch(embedUrl, (newUrl) => {
-  if (newUrl) {
-    console.log('SoundCloud widget: embedUrl changed, resetting widget')
-    widgetInstance.value = null
-    widgetReady.value = false
-    // Даём время iframe загрузиться
-    setTimeout(() => {
-      initWidget()
-    }, 1000)
-  }
-}, { immediate: false })
-
-onUnmounted(() => {
-  // Очищаем слушатели сокетов
-  socketService.off('room:user_joined')
-  socketService.off('room:user_left')
-  socketService.off('soundcloud:track_selected')
-  socketService.off('soundcloud:play')
-  socketService.off('soundcloud:pause')
-  
-  // Отключаемся от комнаты
-  if (roomId) {
-    socketService.emit('room:leave', roomId)
   }
 })
 </script>
@@ -396,7 +233,7 @@ onUnmounted(() => {
               />
               <div
                 v-if="suggestions.length"
-                class="absolute z-40 mt-1 max-h-64 w-full overflow-y-auto rounded-md border bg-background shadow-lg"
+                class="absolute z-10 mt-1 w-full border rounded-md bg-background shadow-lg max-h-64 overflow-y-auto"
               >
                 <div
                   v-for="track in suggestions"
@@ -420,27 +257,40 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div class="space-y-3">
-              <div class="text-sm font-medium">
-                {{ currentTrackTitle || 'No track selected' }}
-                <span v-if="currentTrackArtist" class="ml-1 text-xs text-muted-foreground">
-                  · {{ currentTrackArtist }}
-                </span>
-              </div>
-              <div class="sticky bottom-0 left-0 w-full rounded-lg overflow-hidden border bg-black/80">
-                <iframe
-                  v-if="embedUrl"
-                  ref="widgetIframeRef"
-                  class="w-full h-32 md:h-40"
-                  :src="embedUrl"
-                  frameborder="0"
-                  allow="autoplay"
-                  @load="handleIframeLoad"
-                ></iframe>
-                <div v-else class="h-32 md:h-40 flex items-center justify-center text-sm text-muted-foreground">
-                  Choose a track to start listening
+            <div class="space-y-2">
+              <div class="flex items-center gap-3">
+                <Button size="icon" variant="outline" @click="togglePlay" :disabled="!currentTrackUrl">
+                  <span v-if="!isPlaying">▶</span>
+                  <span v-else>⏸</span>
+                </Button>
+
+                <div class="flex-1 flex flex-col gap-1">
+                  <div class="flex items-center justify-between text-xs text-muted-foreground">
+                    <span class="truncate">
+                      {{ currentTrackTitle || 'No track selected' }}
+                      <span v-if="currentTrackArtist" class="ml-1">· {{ currentTrackArtist }}</span>
+                    </span>
+                    <span>{{ formattedTime }} / {{ formattedDuration }}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    class="w-full"
+                    :value="duration ? (currentTime / duration) * 100 : 0"
+                    @input="seek"
+                  />
                 </div>
               </div>
+              <audio
+                ref="audioRef"
+                :src="currentTrackUrl || undefined"
+                @loadedmetadata="onLoadedMetadata"
+                @timeupdate="onTimeUpdate"
+                @play="onPlay"
+                @pause="onPause"
+              />
             </div>
           </CardContent>
         </Card>
@@ -478,21 +328,6 @@ onUnmounted(() => {
           </div>
         </CardContent>
       </Card>
-    </div>
-    <!-- Toasts -->
-    <div class="fixed bottom-4 right-4 space-y-2 z-50">
-      <div
-        v-for="toast in toasts"
-        :key="toast.id"
-        class="px-3 py-2 rounded-md shadow-lg text-sm"
-        :class="{
-          'bg-emerald-600 text-white': toast.type === 'success',
-          'bg-red-600 text-white': toast.type === 'error',
-          'bg-neutral-800 text-white': toast.type === 'info',
-        }"
-      >
-        {{ toast.message }}
-      </div>
     </div>
   </div>
 </template>

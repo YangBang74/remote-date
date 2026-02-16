@@ -49,7 +49,6 @@ export function useChat(roomId: string) {
     const match = urlRegex.exec(text)
     console.log('user', user.value)
     const displayName =
-
       user.value?.firstName && user.value?.lastName
         ? `${user.value.firstName} ${user.value.lastName}`
         : user.value?.firstName

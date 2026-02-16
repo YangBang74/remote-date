@@ -17,6 +17,20 @@ export default function chatGateway(io: Server) {
 
     socket.on('disconnect', () => {
       console.log('Disconnected:', socket.id)
+
+      // Когда сокет отключается, проверяем его комнаты.
+      // Если в комнате больше нет участников - очищаем историю чата.
+      const rooms = socket.rooms
+      rooms.forEach((roomId) => {
+        // socket.rooms всегда содержит собственный socket.id, его пропускаем
+        if (roomId === socket.id) return
+
+        const room = io.sockets.adapter.rooms.get(roomId)
+        const size = room?.size ?? 0
+        if (size === 0) {
+          chatService.clearRoom(roomId)
+        }
+      })
     })
   })
 }
