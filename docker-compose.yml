@@ -21,6 +21,7 @@ services:
       # Для разработки, в проде поменять
       JWT_SECRET: super-secret-dev
       JWT_EXPIRES_IN: 7d
+      SOUNDCLOUD_CLIENT_ID: EnTrn2ZjaZXfOU7iRsFicZvTOi1Pl3rK
     ports:
       - "5000:5000"
     depends_on:
@@ -35,7 +36,9 @@ services:
     restart: unless-stopped
     environment:
       # Этот URL попадает в браузер, поэтому localhost
-      VITE_API_URL: http://localhost:5000
+      # Бэкенд вешает роуты под /api, поэтому добавляем /api
+      VITE_API_URL: http://localhost:5000/api
+      VITE_SOCKET_URL: http://localhost:5000
     ports:
       - "5173:5173"
     depends_on:

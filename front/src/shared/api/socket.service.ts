@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client'
 import { SOCKET_URL } from '../config/api'
 import type { VideoState } from './room.types'
+import type { ChatMessage } from './chat.types'
 
 // Исходящие события
 export interface SocketEmitEvents {
@@ -10,6 +11,11 @@ export interface SocketEmitEvents {
   'video:pause': (data: { roomId: string; currentTime?: number }) => void
   'video:seek': (data: { roomId: string; currentTime: number }) => void
   'video:sync_request': (roomId: string) => void
+  'join_room': (roomId: string) => void
+  'chat:send': (msg: ChatMessage) => void
+  'soundcloud:track_selected': (data: { roomId: string; permalink: string; title: string | null; artist: string | null }) => void
+  'soundcloud:play': (data: { roomId: string }) => void
+  'soundcloud:pause': (data: { roomId: string }) => void
 }
 
 // Входящие события
@@ -22,6 +28,10 @@ export interface SocketOnEvents {
   'room:user_joined': (data: { roomId: string; participants: number }) => void
   'room:user_left': (data: { roomId: string; participants: number }) => void
   'room:error': (error: { message: string }) => void
+  'chat:message': (msg: ChatMessage) => void
+  'soundcloud:track_selected': (data: { permalink: string; title: string | null; artist: string | null }) => void
+  'soundcloud:play': () => void
+  'soundcloud:pause': () => void
 }
 
 export type SocketEvents = SocketEmitEvents & SocketOnEvents

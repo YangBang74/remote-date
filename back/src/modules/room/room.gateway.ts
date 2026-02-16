@@ -159,6 +159,74 @@ export default function roomGateway(io: Server) {
     })
 
     /**
+     * Выбор трека в SoundCloud комнате
+     */
+    socket.on('soundcloud:track_selected', (data: { roomId: string; permalink: string; title: string | null; artist: string | null }) => {
+      const { roomId, permalink, title, artist } = data
+      const room = roomService.getRoom(roomId)
+
+      if (!room) {
+        socket.emit('room:error', { message: 'Room not found' })
+        return
+      }
+
+      // Отправляем событие всем участникам комнаты (включая отправителя для синхронизации)
+      io.to(roomId).emit('soundcloud:track_selected', {
+        permalink,
+        title,
+        artist,
+      })
+
+      console.log(`SoundCloud track selected in room ${roomId}: ${title || permalink}`)
+    })
+
+    /**
+     * Play в SoundCloud комнате
+     */
+    socket.on('soundcloud:play', (data: { roomId: string }) => {
+      const { roomId } = data
+      const room = roomService.getRoom(roomId)
+
+      if (!room) {
+        socket.emit('room:error', { message: 'Room not found' })
+        return
+      }
+
+      // Убеждаемся, что сокет в комнате
+      if (!socket.rooms.has(roomId)) {
+        socket.join(roomId)
+      }
+
+      // Отправляем событие всем участникам комнаты (кроме отправителя)
+      socket.to(roomId).emit('soundcloud:play')
+
+      console.log(`SoundCloud play in room ${roomId} by ${socket.id}, broadcasting to ${socket.rooms.size} rooms`)
+    })
+
+    /**
+     * Pause в SoundCloud комнате
+     */
+    socket.on('soundcloud:pause', (data: { roomId: string }) => {
+      const { roomId } = data
+      const room = roomService.getRoom(roomId)
+
+      if (!room) {
+        socket.emit('room:error', { message: 'Room not found' })
+        return
+      }
+
+      // Убеждаемся, что сокет в комнате
+      if (!socket.rooms.has(roomId)) {
+        socket.join(roomId)
+      }
+
+      // Отправляем событие всем участникам комнаты (кроме отправителя)
+      socket.to(roomId).emit('soundcloud:pause')
+
+      console.log(`SoundCloud pause in room ${roomId} by ${socket.id}, broadcasting to ${socket.rooms.size} rooms`)
+    })
+
+    /**
      * Отключение
      */
     socket.on('disconnect', () => {

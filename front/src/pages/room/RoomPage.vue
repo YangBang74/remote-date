@@ -7,6 +7,7 @@ import type { VideoRoom, VideoState } from '@/shared/api/room.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
+import { useChat } from '@/shared/composables/useChat'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,6 +17,9 @@ const room = ref<VideoRoom | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const participants = ref(0)
+
+// Chat
+const { messages, newMessage, send } = useChat(roomId)
 
 // YouTube player instance
 let player: any = null
@@ -621,6 +625,39 @@ function copyLink() {
               readonly
               class="flex-1 px-3 py-2 border rounded-md text-sm" />
             <Button size="sm" @click="copyLink"> Copy Link </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Chat</CardTitle>
+        </CardHeader>
+        <CardContent class="space-y-2">
+          <div class="h-64 overflow-y-auto border rounded-md p-2 space-y-1 text-sm">
+            <div v-for="(msg, idx) in messages" :key="idx">
+              <span class="font-semibold">{{ msg.author }}: </span>
+              <span>{{ msg.text }}</span>
+              <a
+                v-if="msg.trackUrl"
+                :href="msg.trackUrl"
+                target="_blank"
+                rel="noopener"
+                class="text-blue-500 underline ml-1"
+              >
+                track
+              </a>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <input
+              v-model="newMessage"
+              type="text"
+              class="flex-1 px-3 py-2 border rounded-md text-sm"
+              placeholder="Send message or paste track link"
+              @keyup.enter="send"
+            />
+            <Button size="sm" @click="send">Send</Button>
           </div>
         </CardContent>
       </Card>

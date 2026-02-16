@@ -1,7 +1,11 @@
+export type RoomType = 'youtube' | 'soundcloud'
+
 export interface VideoRoom {
   id: string
-  youtubeUrl: string
-  youtubeVideoId: string
+  type: RoomType
+  youtubeUrl?: string
+  youtubeVideoId?: string
+  soundcloudUrl?: string
   createdAt: Date
   currentTime: number
   isPlaying: boolean
@@ -9,7 +13,9 @@ export interface VideoRoom {
 }
 
 export interface CreateRoomDto {
-  youtubeUrl: string
+  youtubeUrl?: string
+  soundcloudUrl?: string
+  type?: RoomType
 }
 
 export interface VideoState {

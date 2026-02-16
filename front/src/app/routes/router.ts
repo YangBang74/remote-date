@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { HomePage, AboutPage, RoomPage, AuthPage, ProfilePage } from '@/pages'
+import { HomePage, AboutPage, RoomPage, SoundRoomPage, AuthPage, ProfilePage } from '@/pages'
 import { DefaultLayout, AuthLayout } from '@/app/layout'
 
 const router = createRouter({
@@ -12,6 +12,7 @@ const router = createRouter({
         { path: '', component: HomePage },
         { path: 'about', component: AboutPage },
         { path: 'room/:id', component: RoomPage },
+        { path: 'sound-room/:id', component: SoundRoomPage },
         { path: 'profile', component: ProfilePage },
       ],
     },

@@ -8,14 +8,25 @@ export const RoomController = {
    */
   async createRoom(req: Request, res: Response) {
     try {
-      const { youtubeUrl } = req.body
+      const { youtubeUrl, soundcloudUrl, type } = req.body
 
-      if (!youtubeUrl || typeof youtubeUrl !== 'string') {
-        return res.status(400).json({ error: 'youtubeUrl is required' })
+      // YouTube-комната по URL (старое поведение)
+      if (youtubeUrl) {
+        const room = roomService.createRoom({ youtubeUrl })
+        return res.status(201).json(room)
       }
 
-      const room = roomService.createRoom({ youtubeUrl })
-      res.status(201).json(room)
+      // SoundCloud-комната:
+      // - либо по ссылке
+      // - либо пустая по type === 'soundcloud'
+      if (soundcloudUrl || type === 'soundcloud') {
+        const room = roomService.createRoom({ soundcloudUrl, type })
+        return res.status(201).json(room)
+      }
+
+      return res.status(400).json({
+        error: 'youtubeUrl or soundcloudUrl or type is required',
+      })
     } catch (error: any) {
       res.status(400).json({ error: error.message || 'Failed to create room' })
     }

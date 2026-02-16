@@ -1,5 +1,6 @@
 export { default as HomePage } from './home/HomePage.vue'
 export { default as AboutPage } from './about/AboutPage.vue'
 export { default as RoomPage } from './room/RoomPage.vue'
+export { default as SoundRoomPage } from './room/SoundRoomPage.vue'
 export { default as AuthPage } from './auth/AuthPage.vue'
 export { default as ProfilePage } from './profile/ProfilePage.vue'

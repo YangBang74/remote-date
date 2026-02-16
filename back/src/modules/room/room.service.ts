@@ -1,4 +1,4 @@
-import { VideoRoom, CreateRoomDto, VideoState } from './room.types'
+import { VideoRoom, CreateRoomDto, VideoState, RoomType } from './room.types'
 import { v4 as uuidv4 } from 'uuid'
 
 class RoomService {
@@ -26,18 +26,31 @@ class RoomService {
 
   /**
    * Создает новую комнату
+   * Поддерживает как YouTube, так и SoundCloud.
    */
   createRoom(dto: CreateRoomDto): VideoRoom {
-    const videoId = this.extractVideoId(dto.youtubeUrl)
+    let type: RoomType
+    let youtubeVideoId: string | undefined
 
-    if (!videoId) {
-      throw new Error('Invalid YouTube URL')
+    if (dto.youtubeUrl) {
+      const videoId = this.extractVideoId(dto.youtubeUrl)
+      if (!videoId) {
+        throw new Error('Invalid YouTube URL')
+      }
+      type = 'youtube'
+      youtubeVideoId = videoId
+    } else if (dto.soundcloudUrl || dto.type === 'soundcloud') {
+      type = 'soundcloud'
+    } else {
+      throw new Error('Either youtubeUrl or soundcloudUrl or type is required')
     }
 
     const room: VideoRoom = {
       id: uuidv4(),
+      type,
       youtubeUrl: dto.youtubeUrl,
-      youtubeVideoId: videoId,
+      youtubeVideoId,
+      soundcloudUrl: dto.soundcloudUrl,
       createdAt: new Date(),
       currentTime: 0,
       isPlaying: false,

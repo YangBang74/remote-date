@@ -30,10 +30,15 @@ async function createRoom() {
     loading.value = false
   }
 }
+
+async function createSoundCloudRoom() {
+  const room = await roomAPI.createRoom({ type: 'soundcloud' })
+  router.push(`/sound-room/${room.id}`)
+}
 </script>
 <template>
-  <div class="p-6">
-    <Card>
+  <div class="p-6 flex gap-4 w-full items-start justify-start">
+    <Card class="w-full max-w-md">
       <CardHeader>
         <CardTitle>Watching from Youtube</CardTitle>
       </CardHeader>
@@ -51,6 +56,19 @@ async function createRoom() {
         </div>
         <Button @click="createRoom" :disabled="loading">
           {{ loading ? 'Creating...' : 'Create room' }}
+        </Button>
+      </CardContent>
+    </Card>
+    <Card class="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Live stream from SoundCloud</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <p class="text-sm text-muted-foreground">
+          Create an empty SoundCloud room and choose tracks inside the room.
+        </p>
+        <Button @click="createSoundCloudRoom">
+          Create SoundCloud room
         </Button>
       </CardContent>
     </Card>
