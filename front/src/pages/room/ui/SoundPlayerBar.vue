@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Button } from '@/shared/ui/button'
 import { Slider } from '@/shared/ui/slider'
 import { Card } from '@/shared/ui/card'
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic } from 'lucide-vue-next'
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic, GripVertical } from 'lucide-vue-next'
 import DropdownMenu from '@/shared/ui/dropdown-menu/DropdownMenu.vue'
 import DropdownMenuTrigger from '@/shared/ui/dropdown-menu/DropdownMenuTrigger.vue'
 import DropdownMenuContent from '@/shared/ui/dropdown-menu/DropdownMenuContent.vue'
@@ -73,7 +73,43 @@ const emit = defineEmits<{
   (e: 'next'): void
   (e: 'like'): void
   (e: 'selectQueueIndex', index: number): void
+  (e: 'reorderQueue', newOrderIds: (string | number)[]): void
 }>()
+
+const draggedIndex = ref<number | null>(null)
+
+function onDragStart(e: DragEvent, index: number) {
+  draggedIndex.value = index
+  e.dataTransfer?.setData('text/plain', String(index))
+  e.dataTransfer!.effectAllowed = 'move'
+}
+
+function onDragOver(e: DragEvent) {
+  e.preventDefault()
+  e.dataTransfer!.dropEffect = 'move'
+}
+
+function onDrop(e: DragEvent, dropIndex: number) {
+  e.preventDefault()
+  const from = draggedIndex.value
+  if (from === null || from === dropIndex) {
+    draggedIndex.value = null
+    return
+  }
+  const ids = [...props.queue].map((t) => t.id).filter((id): id is string | number => id != null)
+  const [removed] = ids.splice(from, 1)
+  if (removed === undefined) {
+    draggedIndex.value = null
+    return
+  }
+  ids.splice(dropIndex, 0, removed)
+  draggedIndex.value = null
+  emit('reorderQueue', ids)
+}
+
+function onDragEnd() {
+  draggedIndex.value = null
+}
 
 const formattedTime = computed(() => {
   const mins = Math.floor(props.currentTime / 60)
@@ -104,13 +140,13 @@ const handleVolumeChange = (values?: number[]) => {
 
 <template>
   <Card
-    class="fixed inset-x-0 -bottom-4 w-full py-2 rounded-none border border-border/60 bg-background/95 backdrop-blur-sm z-20">
+    class="absolute inset-x-0 left-0 -bottom-17 w-full py-2 rounded-none border border-border/60 bg-background/95 backdrop-blur-sm z-20">
     <div
       class="flex flex-col gap-2 px-3 sm:px-4 sm:flex-row sm:items-center sm:gap-4 py-0!"
     >
       <!-- Artwork -->
       <div
-        class="h-10 w-10 sm:h-12 sm:w-12 rounded-md bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+        class="h-10 w-10 md:flex hidden sm:h-12 sm:w-12 rounded-md bg-muted overflow-hidden shrink-0 items-center justify-center">
         <img
           v-if="artworkUrl"
           :src="artworkUrl"
@@ -206,20 +242,36 @@ const handleVolumeChange = (values?: number[]) => {
                 v-for="(track, index) in queue"
                 :key="track.id ?? index"
                 :class="[
-                  'flex flex-col items-start gap-0.5',
+                  'flex flex-col items-start gap-0.5 group',
                   index === currentQueueIndex ? 'bg-accent text-accent-foreground' : '',
                 ]"
+                draggable="true"
                 @click="emit('selectQueueIndex', index)"
+                @dragstart="onDragStart($event, index)"
+                @dragover="onDragOver"
+                @drop="onDrop($event, index)"
+                @dragend="onDragEnd"
               >
-                <span class="text-xs font-medium truncate w-full">
-                  {{ track.title || 'Untitled track' }}
-                </span>
-                <span
-                  v-if="track.artist"
-                  class="text-[10px] text-muted-foreground truncate w-full"
-                >
-                  {{ track.artist }}
-                </span>
+                <div class="flex items-center gap-2 w-full min-w-0">
+                  <span
+                    class="shrink-0 cursor-grab active:cursor-grabbing touch-none opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground"
+                    @mousedown.stop
+                    @click.stop
+                  >
+                    <GripVertical class="size-3.5" />
+                  </span>
+                  <div class="flex-1 min-w-0 flex flex-col items-start gap-0.5">
+                    <span class="text-xs font-medium truncate w-full">
+                      {{ track.title || 'Untitled track' }}
+                    </span>
+                    <span
+                      v-if="track.artist"
+                      class="text-[10px] text-muted-foreground truncate w-full"
+                    >
+                      {{ track.artist }}
+                    </span>
+                  </div>
+                </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </template>

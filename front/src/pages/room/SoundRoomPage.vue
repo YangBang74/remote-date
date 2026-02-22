@@ -482,6 +482,22 @@ async function playPrevInQueue() {
   await goToQueueIndex(prevIndex)
 }
 
+function reorderQueue(newOrderIds: (string | number)[]) {
+  const byId = new Map<string | number, SoundTrack>(
+    trackQueue.value.map((t) => [t.id, t])
+  )
+  const reordered = newOrderIds
+    .map((id) => byId.get(id))
+    .filter((t): t is SoundTrack => t != null)
+
+  if (reordered.length !== trackQueue.value.length) return
+
+  const currentId = trackQueue.value[currentQueueIndex.value ?? 0]?.id
+  trackQueue.value = reordered
+  const newIndex = reordered.findIndex((t) => t.id === currentId)
+  currentQueueIndex.value = newIndex >= 0 ? newIndex : 0
+}
+
 onMounted(async () => {
   try {
     room.value = await roomAPI.getRoom(roomId)
@@ -556,7 +572,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="p-6 pt-0 space-y-4 relative">
+  <div class="p-6 py-0 space-y-4 relative">
     <Card v-if="loading">
       <CardContent class="p-6">
         <Skeleton class="w-full h-96" />
@@ -568,7 +584,7 @@ onUnmounted(() => {
       <Button @click="router.push('/')">Go Home</Button>
     </div>
 
-    <div v-else-if="room" class="grid gap-4 md:grid-cols-[2fr,1fr]">
+    <div v-else-if="room" class="grid gap-4 md:grid-cols-[2fr,1fr] relative">
       <!-- Left column: player & search -->
       <div class="space-y-4">
         <Card>
@@ -579,7 +595,7 @@ onUnmounted(() => {
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
-            <div class="space-y-2 relative">
+            <div class="space-y-2 ">
               <div class="flex gap-1 mb-1">
                 <Button
                   :variant="searchType === 'track' ? 'secondary' : 'ghost'"
@@ -641,8 +657,22 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      </div>
 
-            <SoundPlayerBar
+      <!-- Right column: chat -->
+      <RoomChatPanel
+        :messages="messages"
+        :new-message="newMessage"
+        :current-user-name="currentUserName"
+        @update:new-message="(v) => (newMessage = v)"
+        @send="send"
+        @playTrack="loadTrackFromChat"
+        @sendFile="sendFile"
+      />
+    </div>
+    <SoundPlayerBar
               :title="currentTrackTitle || 'No track selected'"
               :artist="currentTrackArtist || ''"
               :artwork-url="currentArtworkUrl || suggestions[0]?.artworkUrl || ''"
@@ -662,7 +692,8 @@ onUnmounted(() => {
               :can-go-next="(currentQueueIndex ?? -1) >= 0 && (currentQueueIndex ?? 0) < trackQueue.length - 1"
               @prev="playPrevInQueue"
               @next="playNextInQueue"
-              @selectQueueIndex="(index) => goToQueueIndex(index)" />
+              @selectQueueIndex="(index) => goToQueueIndex(index)"
+              @reorderQueue="reorderQueue" />
             <audio
               ref="audioRef"
               :src="currentTrackUrl || undefined"
@@ -672,21 +703,6 @@ onUnmounted(() => {
               @pause="onPause"
               @ended="playNextInQueue"
             />
-          </CardContent>
-        </Card>
-      </div>
-
-      <!-- Right column: chat -->
-      <RoomChatPanel
-        :messages="messages"
-        :new-message="newMessage"
-        :current-user-name="currentUserName"
-        @update:new-message="(v) => (newMessage = v)"
-        @send="send"
-        @playTrack="loadTrackFromChat"
-        @sendFile="sendFile"
-      />
-    </div>
   </div>
 </template>
 
