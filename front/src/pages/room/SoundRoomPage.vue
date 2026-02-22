@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { roomAPI } from '@/shared/api/room.api'
-import type { VideoRoom } from '@/shared/api/room.types'
+import type { VideoRoom, VideoState } from '@/shared/api/room.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import SoundPlayerBar from './ui/SoundPlayerBar.vue'
 import { socketService } from '@/shared/api/socket.service'
 import { useChat } from '@/shared/composables/useChat'
-import { soundCloudAPI } from '@/shared/api/soundcloud.api'
+import {
+  soundCloudAPI,
+  type SoundCloudTrack,
+  type SoundCloudPlaylist,
+} from '@/shared/api/soundcloud.api'
 import { toast } from 'vue-sonner'
 import RoomChatPanel from './ui/RoomChatPanel.vue'
 
@@ -21,9 +25,10 @@ const room = ref<VideoRoom | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 const participants = ref(0)
-const { messages, newMessage, send, currentUserName } = useChat(roomId)
+const { messages, newMessage, send, sendFile, currentUserName } = useChat(roomId)
 
 const searchQuery = ref('')
+const searchType = ref<'track' | 'album'>('track')
 const currentTrackUrl = ref<string | null>(null)
 const currentTrackTitle = ref<string | null>(null)
 const currentTrackArtist = ref<string | null>(null)
@@ -35,9 +40,16 @@ const duration = ref(0)
 const volume = ref(100)
 const muted = ref(false)
 const isSearching = ref(false)
-const suggestions = ref<
-  Awaited<ReturnType<typeof soundCloudAPI.searchTracks>>
->([])
+const suggestions = ref<(SoundCloudTrack | SoundCloudPlaylist)[]>([])
+
+type SoundTrack = SoundCloudTrack
+
+// Очередь треков: текущий + следующие
+const trackQueue = ref<SoundTrack[]>([])
+const currentQueueIndex = ref<number | null>(null)
+
+// Флаг, чтобы отличать локальные действия от действий, инициированных сервером
+const isLocalAction = ref(false)
 function loadTrack() {
   if (!searchQuery.value.trim()) {
     toast.error('Please enter a SoundCloud track URL')
@@ -64,6 +76,27 @@ function loadTrackFromChat(url: string) {
   currentTrackTitle.value = 'Shared track'
   currentTrackArtist.value = null
   toast.success('Track from chat loaded to player')
+
+  // Обновляем очередь: только этот трек
+  trackQueue.value = [
+    {
+      id: url,
+      permalinkUrl: url,
+      streamUrl: url,
+      title: currentTrackTitle.value ?? undefined,
+      username: currentTrackArtist.value ?? undefined,
+      artworkUrl: currentArtworkUrl.value ?? undefined,
+    } as any as SoundTrack,
+  ]
+  currentQueueIndex.value = 0
+
+  socketService.emit('audio:track_change', {
+    roomId,
+    trackUrl: url,
+    title: currentTrackTitle.value,
+    artist: currentTrackArtist.value,
+    artworkUrl: currentArtworkUrl.value,
+  })
 }
 
 async function searchSuggestions(query: string) {
@@ -74,11 +107,13 @@ async function searchSuggestions(query: string) {
 
   try {
     isSearching.value = true
-    const tracks = await soundCloudAPI.searchTracks(query, 5)
-    suggestions.value = tracks
+    const filter = searchType.value === 'album' ? 'playlists' : 'tracks'
+    const limit = searchType.value === 'album' ? 5 : 20
+    const items = await soundCloudAPI.searchTracks(query, limit, filter)
+    suggestions.value = items
   } catch (e: any) {
     console.error(e)
-    toast.error(e.message || 'Failed to search tracks')
+    toast.error(e.message || 'Failed to search')
   } finally {
     isSearching.value = false
   }
@@ -86,46 +121,109 @@ async function searchSuggestions(query: string) {
 
 let searchDebounce: number | undefined
 watch(
-  searchQuery,
-  (val) => {
+  [searchQuery, searchType],
+  ([val]) => {
     if (searchDebounce) {
       clearTimeout(searchDebounce)
     }
 
-    if (!val.trim()) {
+    if (!val || !String(val).trim()) {
       suggestions.value = []
       return
     }
 
     searchDebounce = window.setTimeout(() => {
-      searchSuggestions(val)
+      searchSuggestions(String(val))
     }, 500)
   }
 )
 
-function selectSuggestion(url: string) {
-  const track = suggestions.value.find((t) => t.permalinkUrl === url)
-  if (!track) {
-    toast.error('Track not found in suggestions.')
-    return
-  }
-
+function selectTrack(track: SoundCloudTrack) {
   if (!track.streamUrl) {
     toast.error('This track cannot be played with custom player (no stream URL).')
     return
   }
+
+  const trackItems = suggestions.value.filter(
+    (s): s is SoundCloudTrack => 'streamUrl' in s && s.streamUrl != null
+  )
+  const selectedIndex = trackItems.findIndex((t) => t.permalinkUrl === track.permalinkUrl)
 
   currentTrackUrl.value = track.streamUrl
   currentTrackTitle.value = track.title ?? null
   currentTrackArtist.value = track.username ?? null
   currentArtworkUrl.value = track.artworkUrl ?? null
   suggestions.value = []
-  toast.success('Track selected from suggestions.')
+  toast.success('Track selected.')
+
+  // Добавляем в очередь: выбранный трек + все следующие из результатов поиска
+  const queueSlice =
+    selectedIndex !== -1
+      ? trackItems.slice(selectedIndex)
+      : [track]
+  trackQueue.value = queueSlice.length ? queueSlice : [track]
+  currentQueueIndex.value = 0
+
+  socketService.emit('audio:track_change', {
+    roomId,
+    trackUrl: currentTrackUrl.value,
+    title: currentTrackTitle.value,
+    artist: currentTrackArtist.value,
+    artworkUrl: currentArtworkUrl.value,
+  })
+}
+
+async function selectPlaylist(playlist: SoundCloudPlaylist) {
+  try {
+    isSearching.value = true
+    const tracks = await soundCloudAPI.getPlaylistTracks(playlist.id)
+    const playable = tracks.filter((t) => t.streamUrl)
+
+    if (!playable.length) {
+      toast.error('No playable tracks in this album.')
+      return
+    }
+
+    suggestions.value = []
+    trackQueue.value = playable
+    currentQueueIndex.value = 0
+
+    const first = playable[0]!
+    currentTrackUrl.value = first.streamUrl!
+    currentTrackTitle.value = first.title ?? null
+    currentTrackArtist.value = first.username ?? null
+    currentArtworkUrl.value = first.artworkUrl ?? null
+
+    socketService.emit('audio:track_change', {
+      roomId,
+      trackUrl: currentTrackUrl.value,
+      title: currentTrackTitle.value,
+      artist: currentTrackArtist.value,
+      artworkUrl: currentArtworkUrl.value,
+    })
+
+    toast.success(`Album loaded: ${playable.length} tracks`)
+  } catch (e: any) {
+    console.error(e)
+    toast.error(e.message || 'Failed to load album')
+  } finally {
+    isSearching.value = false
+  }
 }
 
 function togglePlay() {
   const audio = audioRef.value
   if (!audio || !currentTrackUrl.value) return
+
+  // Если действие пришло с сервера — просто меняем локальное состояние без повторной отправки
+  if (isLocalAction.value) {
+    if (audio.paused) {
+      audio.play()
+    } else {
+      audio.pause()
+    }
+    return
+  }
 
   if (audio.paused) {
     audio.play()
@@ -151,10 +249,32 @@ function onTimeUpdate() {
 
 function onPlay() {
   isPlaying.value = true
+
+  const audio = audioRef.value
+  if (!audio || !currentTrackUrl.value) return
+
+  // Не рассылаем событие, если воспроизведение запущено по сигналу сервера
+  if (isLocalAction.value) return
+
+  socketService.emit('video:play', {
+    roomId,
+    currentTime: audio.currentTime || 0,
+  })
 }
 
 function onPause() {
   isPlaying.value = false
+
+  const audio = audioRef.value
+  if (!audio || !currentTrackUrl.value) return
+
+  // Не рассылаем событие, если пауза пришла с сервера
+  if (isLocalAction.value) return
+
+  socketService.emit('video:pause', {
+    roomId,
+    currentTime: audio.currentTime || 0,
+  })
 }
 
 function seek(e: Event) {
@@ -163,6 +283,14 @@ function seek(e: Event) {
   const target = e.target as HTMLInputElement
   const value = Number(target.value)
   audio.currentTime = (value / 100) * (duration.value || 1)
+
+  // Не отправляем событие, если это синхронизация с сервера
+  if (isLocalAction.value) return
+
+  socketService.emit('video:seek', {
+    roomId,
+    currentTime: audio.currentTime || 0,
+  })
 }
 
 function toggleMute() {
@@ -191,6 +319,169 @@ function changeVolume(value: number) {
   }
 }
 
+// --- Обработчики событий синхронизации от других участников ---
+
+let audioStateRetryCount = 0
+const MAX_AUDIO_STATE_RETRIES = 20
+let lastRemoteSeekAt = 0
+
+function applyRemoteState(targetTime: number, playing: boolean) {
+  const audio = audioRef.value
+  if (!audio || !currentTrackUrl.value) return
+
+  try {
+    isLocalAction.value = true
+
+    // Устанавливаем позицию
+    audio.currentTime = Math.max(0, targetTime)
+
+    if (playing) {
+      audio.play()
+    } else {
+      audio.pause()
+    }
+
+    setTimeout(() => {
+      isLocalAction.value = false
+    }, 500)
+  } catch (e) {
+    console.error('Error applying remote audio state:', e)
+    setTimeout(() => {
+      isLocalAction.value = false
+    }, 500)
+  }
+}
+
+function handleAudioState(state: VideoState) {
+  const audio = audioRef.value
+  if (!audio || !currentTrackUrl.value) {
+    audioStateRetryCount++
+    if (audioStateRetryCount >= MAX_AUDIO_STATE_RETRIES) {
+      console.warn('Audio not ready after maximum retries, skipping state sync')
+      audioStateRetryCount = 0
+      return
+    }
+    setTimeout(() => handleAudioState(state), 500)
+    return
+  }
+
+  audioStateRetryCount = 0
+
+  const delay = (Date.now() - state.timestamp) / 1000
+  const targetTime = Math.max(0, state.currentTime + delay)
+
+  applyRemoteState(targetTime, state.isPlaying)
+}
+
+function handleAudioPlay(data: { currentTime: number; timestamp: number }) {
+  const audio = audioRef.value
+  if (!audio || !currentTrackUrl.value || isLocalAction.value) return
+
+  const networkDelay = (Date.now() - data.timestamp) / 1000
+  const targetTime = Math.max(0, data.currentTime + networkDelay)
+
+  applyRemoteState(targetTime, true)
+}
+
+function handleAudioPause(data: { currentTime: number; timestamp: number }) {
+  const audio = audioRef.value
+  if (!audio || !currentTrackUrl.value || isLocalAction.value) return
+
+  // Если сразу после перемотки пришла пауза — игнорируем её,
+  // чтобы не останавливать воспроизведение у других пользователей.
+  if (Date.now() - lastRemoteSeekAt < 400) {
+    return
+  }
+
+  const networkDelay = (Date.now() - data.timestamp) / 1000
+  const targetTime = Math.max(0, data.currentTime + networkDelay)
+
+  applyRemoteState(targetTime, false)
+}
+
+function handleAudioSeek(data: { currentTime: number; timestamp: number }) {
+  const audio = audioRef.value
+  if (!audio || !currentTrackUrl.value || isLocalAction.value) return
+
+  lastRemoteSeekAt = Date.now()
+
+  const networkDelay = (Date.now() - data.timestamp) / 1000
+  const targetTime = Math.max(0, data.currentTime + networkDelay)
+
+  // После перемотки оставляем текущее локальное состояние (играет/пауза),
+  // чтобы не ломать синхронное прослушивание.
+  applyRemoteState(targetTime, isPlaying.value)
+}
+
+function handleTrackChange(data: {
+  trackUrl: string
+  title?: string
+  artist?: string
+  artworkUrl?: string
+}) {
+  if (!data.trackUrl) return
+
+  currentTrackUrl.value = data.trackUrl
+  currentTrackTitle.value = data.title ?? 'Shared track'
+  currentTrackArtist.value = data.artist ?? null
+  currentArtworkUrl.value = data.artworkUrl ?? null
+}
+
+// Перейти к треку в очереди по индексу
+async function goToQueueIndex(index: number, autoplay = true) {
+  if (!trackQueue.value.length || index < 0 || index >= trackQueue.value.length) return
+
+  const track = trackQueue.value[index]
+  if (!track?.streamUrl) return
+
+  currentQueueIndex.value = index
+  currentTrackUrl.value = track.streamUrl
+  currentTrackTitle.value = track.title ?? null
+  currentTrackArtist.value = track.username ?? null
+  currentArtworkUrl.value = track.artworkUrl ?? null
+
+  socketService.emit('audio:track_change', {
+    roomId,
+    trackUrl: currentTrackUrl.value,
+    title: currentTrackTitle.value,
+    artist: currentTrackArtist.value,
+    artworkUrl: currentArtworkUrl.value,
+  })
+
+  if (autoplay) {
+    await nextTick()
+    const audio = audioRef.value
+    if (audio) {
+      try {
+        await audio.play()
+      } catch (e) {
+        console.error('Failed to autoplay', e)
+      }
+    }
+  }
+}
+
+async function playNextInQueue() {
+  if (!trackQueue.value.length || currentQueueIndex.value === null) return
+
+  const nextIndex = currentQueueIndex.value + 1
+  if (nextIndex >= trackQueue.value.length) {
+    isPlaying.value = false
+    return
+  }
+
+  await goToQueueIndex(nextIndex)
+}
+
+async function playPrevInQueue() {
+  if (!trackQueue.value.length || currentQueueIndex.value === null) return
+
+  const prevIndex = currentQueueIndex.value - 1
+  if (prevIndex < 0) return
+
+  await goToQueueIndex(prevIndex)
+}
+
 onMounted(async () => {
   try {
     room.value = await roomAPI.getRoom(roomId)
@@ -202,6 +493,14 @@ onMounted(async () => {
     }
 
     participants.value = room.value.participants
+
+    // Если в комнате уже есть выбранный SoundCloud трек – подхватываем его и метаданные
+    if (room.value.soundcloudUrl) {
+      currentTrackUrl.value = room.value.soundcloudUrl
+      currentTrackTitle.value = room.value.soundcloudTitle ?? 'Current track'
+      currentTrackArtist.value = room.value.soundcloudArtist ?? null
+      currentArtworkUrl.value = room.value.soundcloudArtworkUrl ?? null
+    }
 
     socketService.connect()
     socketService.emit('room:join', roomId)
@@ -218,6 +517,19 @@ onMounted(async () => {
       }
     })
 
+    // События синхронизации аудио (переиспользуем видео-события комнат)
+    socketService.on('video:state', handleAudioState)
+    socketService.on('video:play', handleAudioPlay)
+    socketService.on('video:pause', handleAudioPause)
+    socketService.on('video:seek', handleAudioSeek)
+    socketService.on('video:sync', handleAudioState)
+
+    // Смена трека в SoundCloud комнате
+    socketService.on('audio:track_change', handleTrackChange)
+
+    // Просим сервер отдать актуальное состояние (время/плей) для только что вошедшего
+    socketService.emit('video:sync_request', roomId)
+
     loading.value = false
   } catch (err: any) {
     console.error(err)
@@ -225,10 +537,26 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+onUnmounted(() => {
+  // Отключаемся от комнаты и убираем слушателей
+  if (roomId) {
+    socketService.emit('room:leave', roomId)
+  }
+
+  socketService.off('video:state')
+  socketService.off('video:play')
+  socketService.off('video:pause')
+  socketService.off('video:seek')
+  socketService.off('video:sync')
+  socketService.off('audio:track_change')
+  socketService.off('room:user_joined')
+  socketService.off('room:user_left')
+})
 </script>
 
 <template>
-  <div class="p-6 space-y-4 relative">
+  <div class="p-6 pt-0 space-y-4 relative">
     <Card v-if="loading">
       <CardContent class="p-6">
         <Skeleton class="w-full h-96" />
@@ -252,11 +580,33 @@ onMounted(async () => {
           </CardHeader>
           <CardContent class="space-y-4">
             <div class="space-y-2 relative">
+              <div class="flex gap-1 mb-1">
+                <Button
+                  :variant="searchType === 'track' ? 'secondary' : 'ghost'"
+                  size="sm"
+                  class="text-xs"
+                  @click="searchType = 'track'"
+                >
+                  Track
+                </Button>
+                <Button
+                  :variant="searchType === 'album' ? 'secondary' : 'ghost'"
+                  size="sm"
+                  class="text-xs"
+                  @click="searchType = 'album'"
+                >
+                  Album
+                </Button>
+              </div>
               <input
                 v-model="searchQuery"
                 type="text"
                 class="w-full px-3 py-2 border rounded-md text-sm"
-                placeholder="Search or paste SoundCloud track URL"
+                :placeholder="
+                  searchType === 'track'
+                    ? 'Search tracks or paste SoundCloud URL'
+                    : 'Search albums'
+                "
                 @keyup.enter="loadTrack"
               />
               <div
@@ -264,21 +614,28 @@ onMounted(async () => {
                 class="absolute z-10 mt-1 w-full border rounded-md bg-background shadow-lg max-h-64 overflow-y-auto"
               >
                 <div
-                  v-for="track in suggestions"
-                  :key="track.id"
+                  v-for="item in suggestions"
+                  :key="item.id"
                   class="flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-accent"
-                  @click="selectSuggestion(track.permalinkUrl)"
+                  @click="
+                    'kind' in item && item.kind === 'playlist'
+                      ? selectPlaylist(item)
+                      : selectTrack(item as SoundCloudTrack)
+                  "
                 >
                   <img
-                    v-if="track.artworkUrl"
-                    :src="track.artworkUrl"
+                    v-if="item.artworkUrl"
+                    :src="item.artworkUrl"
                     alt=""
                     class="w-8 h-8 rounded object-cover"
                   />
                   <div class="flex-1 min-w-0">
-                    <p class="text-xs font-medium truncate">{{ track.title }}</p>
+                    <p class="text-xs font-medium truncate">{{ item.title }}</p>
                     <p class="text-[10px] text-muted-foreground truncate">
-                      {{ track.username }}
+                      {{ item.username }}
+                      <span v-if="'trackCount' in item && item.trackCount">
+                        · {{ item.trackCount }} tracks
+                      </span>
                     </p>
                   </div>
                 </div>
@@ -295,10 +652,17 @@ onMounted(async () => {
               :can-play="!!currentTrackUrl"
               :volume="volume"
               :muted="muted"
+              :queue="trackQueue.map((t) => ({ id: t.id, title: t.title ?? null, artist: t.username ?? null }))"
+              :current-queue-index="currentQueueIndex ?? -1"
               @togglePlay="togglePlay"
               @seek="(value) => seek({ target: { value: String(value) } } as any)"
               @toggleMute="toggleMute"
-              @changeVolume="changeVolume" />
+              @changeVolume="changeVolume"
+              :can-go-prev="(currentQueueIndex ?? 0) > 0 && trackQueue.length > 1"
+              :can-go-next="(currentQueueIndex ?? -1) >= 0 && (currentQueueIndex ?? 0) < trackQueue.length - 1"
+              @prev="playPrevInQueue"
+              @next="playNextInQueue"
+              @selectQueueIndex="(index) => goToQueueIndex(index)" />
             <audio
               ref="audioRef"
               :src="currentTrackUrl || undefined"
@@ -306,6 +670,7 @@ onMounted(async () => {
               @timeupdate="onTimeUpdate"
               @play="onPlay"
               @pause="onPause"
+              @ended="playNextInQueue"
             />
           </CardContent>
         </Card>
@@ -319,6 +684,7 @@ onMounted(async () => {
         @update:new-message="(v) => (newMessage = v)"
         @send="send"
         @playTrack="loadTrackFromChat"
+        @sendFile="sendFile"
       />
     </div>
   </div>

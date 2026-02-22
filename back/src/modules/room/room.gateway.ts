@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io'
 import { roomService } from './room.service'
-import { VideoEvent } from './room.types'
+import { VideoEvent, SoundTrackPayload } from './room.types'
 
 export default function roomGateway(io: Server) {
   io.on('connection', (socket: Socket) => {
@@ -156,6 +156,48 @@ export default function roomGateway(io: Server) {
       } else {
         socket.emit('room:error', { message: 'Room not found' })
       }
+    })
+
+    /**
+     * Смена трека в SoundCloud комнате
+     */
+    socket.on('audio:track_change', (data: SoundTrackPayload) => {
+      const { roomId, trackUrl } = data
+      const room = roomService.getRoom(roomId)
+
+      if (!room) {
+        socket.emit('room:error', { message: 'Room not found' })
+        return
+      }
+
+      if (room.type !== 'soundcloud') {
+        socket.emit('room:error', { message: 'Not a SoundCloud room' })
+        return
+      }
+
+      if (!trackUrl) {
+        socket.emit('room:error', { message: 'trackUrl is required' })
+        return
+      }
+
+      // Обновляем текущий трек и его метаданные в комнате (для новых участников)
+      roomService.updateSoundcloudTrack(
+        roomId,
+        trackUrl,
+        data.title,
+        data.artist,
+        data.artworkUrl
+      )
+
+      // Шлём всем остальным участникам информацию о треке
+      socket.to(roomId).emit('audio:track_change', {
+        trackUrl: data.trackUrl,
+        title: data.title,
+        artist: data.artist,
+        artworkUrl: data.artworkUrl,
+      })
+
+      console.log(`Sound track changed in room ${roomId} -> ${trackUrl}`)
     })
 
     /**

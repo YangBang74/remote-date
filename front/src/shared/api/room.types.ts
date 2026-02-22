@@ -6,6 +6,9 @@ export interface VideoRoom {
   youtubeUrl?: string
   youtubeVideoId?: string
   soundcloudUrl?: string
+  soundcloudTitle?: string
+  soundcloudArtist?: string
+  soundcloudArtworkUrl?: string
   createdAt: string
   currentTime: number
   isPlaying: boolean

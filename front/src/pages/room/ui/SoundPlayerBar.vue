@@ -3,7 +3,11 @@ import { computed } from 'vue'
 import { Button } from '@/shared/ui/button'
 import { Slider } from '@/shared/ui/slider'
 import { Card } from '@/shared/ui/card'
-import {  Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-vue-next'
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic } from 'lucide-vue-next'
+import DropdownMenu from '@/shared/ui/dropdown-menu/DropdownMenu.vue'
+import DropdownMenuTrigger from '@/shared/ui/dropdown-menu/DropdownMenuTrigger.vue'
+import DropdownMenuContent from '@/shared/ui/dropdown-menu/DropdownMenuContent.vue'
+import DropdownMenuItem from '@/shared/ui/dropdown-menu/DropdownMenuItem.vue'
 
 const props = defineProps({
   title: {
@@ -42,6 +46,22 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  queue: {
+    type: Array as () => { id: string | number; title?: string | null; artist?: string | null }[],
+    default: () => [],
+  },
+  currentQueueIndex: {
+    type: Number,
+    default: -1,
+  },
+  canGoPrev: {
+    type: Boolean,
+    default: false,
+  },
+  canGoNext: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits<{
@@ -52,6 +72,7 @@ const emit = defineEmits<{
   (e: 'prev'): void
   (e: 'next'): void
   (e: 'like'): void
+  (e: 'selectQueueIndex', index: number): void
 }>()
 
 const formattedTime = computed(() => {
@@ -139,7 +160,7 @@ const handleVolumeChange = (values?: number[]) => {
           size="icon"
           variant="ghost"
           class="text-muted-foreground hover:text-foreground"
-          :disabled="true"
+          :disabled="!canGoPrev"
           @click="emit('prev')">
           <SkipBack class="w-4 h-4" />
         </Button>
@@ -160,10 +181,49 @@ const handleVolumeChange = (values?: number[]) => {
           size="icon"
           variant="ghost"
           class="text-muted-foreground hover:text-foreground"
-          :disabled="true"
+          :disabled="!canGoNext"
           @click="emit('next')">
           <SkipForward class="w-4 h-4" />
         </Button>
+
+        <!-- Queue dropdown -->
+        <DropdownMenu v-if="queue.length">
+          <template #default>
+            <DropdownMenuTrigger as-child>
+              <Button
+                size="icon"
+                variant="ghost"
+                class="text-muted-foreground hover:text-foreground"
+              >
+                <ListMusic class="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent class="w-72 max-h-[min(70vh,400px)] overflow-y-auto">
+              <div class="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                Queue
+              </div>
+              <DropdownMenuItem
+                v-for="(track, index) in queue"
+                :key="track.id ?? index"
+                :class="[
+                  'flex flex-col items-start gap-0.5',
+                  index === currentQueueIndex ? 'bg-accent text-accent-foreground' : '',
+                ]"
+                @click="emit('selectQueueIndex', index)"
+              >
+                <span class="text-xs font-medium truncate w-full">
+                  {{ track.title || 'Untitled track' }}
+                </span>
+                <span
+                  v-if="track.artist"
+                  class="text-[10px] text-muted-foreground truncate w-full"
+                >
+                  {{ track.artist }}
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </template>
+        </DropdownMenu>
 
         <!-- Volume -->
         <div

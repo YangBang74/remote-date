@@ -104,6 +104,41 @@ export function useChat(roomId: string) {
     newMessage.value = ''
   }
 
-  return { messages, newMessage, send, currentUserName }
+  const sendFile = (file: File) => {
+    if (!file) return
+
+    const isImage = file.type.startsWith('image/')
+    const isAudio = file.type.startsWith('audio/')
+    if (!isImage && !isAudio) return
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+
+      const displayName =
+        user.value?.firstName && user.value?.lastName
+          ? `${user.value.firstName} ${user.value.lastName}`
+          : user.value?.firstName
+          ? user.value.firstName
+          : user.value?.email || 'Guest'
+
+      currentUserName.value = displayName
+
+      const msg: ChatMessage = {
+        room: roomId,
+        author: displayName,
+        text: file.name,
+        time: Date.now(),
+        trackUrl: isAudio ? dataUrl : undefined,
+        imageUrl: isImage ? dataUrl : undefined,
+      }
+
+      socketService.emit('chat:send', msg)
+    }
+
+    reader.readAsDataURL(file)
+  }
+
+  return { messages, newMessage, send, sendFile, currentUserName }
 }
 

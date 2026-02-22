@@ -6,6 +6,9 @@ export interface VideoRoom {
   youtubeUrl?: string
   youtubeVideoId?: string
   soundcloudUrl?: string
+  soundcloudTitle?: string
+  soundcloudArtist?: string
+  soundcloudArtworkUrl?: string
   createdAt: Date
   currentTime: number
   isPlaying: boolean
@@ -22,6 +25,14 @@ export interface VideoState {
   currentTime: number
   isPlaying: boolean
   timestamp: number // Время сервера для синхронизации
+}
+
+export interface SoundTrackPayload {
+  roomId: string
+  trackUrl: string
+  title?: string
+  artist?: string
+  artworkUrl?: string
 }
 
 export interface VideoEvent {

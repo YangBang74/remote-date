@@ -3,6 +3,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
 import type { ChatMessage } from '@/shared/api/chat.types'
+import { Plus } from 'lucide-vue-next'
 
 type UiChatMessage = ChatMessage & {
   isOwn?: boolean
@@ -20,6 +21,7 @@ const emit = defineEmits<{
   (e: 'update:newMessage', value: string): void
   (e: 'send'): void
   (e: 'playTrack', url: string): void
+  (e: 'sendFile', file: File): void
 }>()
 
 const sortedMessages = computed(() =>
@@ -58,7 +60,7 @@ watch(
       <!-- Messages -->
       <div
         ref="messagesContainer"
-        class="flex-1 overflow-y-auto border rounded-md p-2 space-y-2 text-sm bg-muted/30 max-h-80 md:max-h-96"
+        class="flex-1 overflow-y-auto border rounded-md p-2 space-y-2 text-sm bg-muted/30 h-full max-h-80! md:max-h-96!"
       >
         <div
           v-if="!sortedMessages.length && !loading"
@@ -130,7 +132,7 @@ watch(
           class="hidden sm:inline-flex"
           @click="openFileDialog"
         >
-          +
+          <Plus />
         </Button>
         <Button size="sm" @click="emit('send')">
           Send
@@ -141,7 +143,18 @@ watch(
         type="file"
         accept="image/*,audio/*"
         class="hidden"
-        @change="() => {}"
+        @change="
+          (e) => {
+            const input = e.target as HTMLInputElement
+            const file = input.files?.[0]
+            if (file) {
+              emit('sendFile', file)
+            }
+            if (input) {
+              input.value = ''
+            }
+          }
+        "
       />
     </CardContent>
   </Card>

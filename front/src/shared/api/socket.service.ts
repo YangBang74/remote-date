@@ -13,6 +13,13 @@ export interface SocketEmitEvents {
   'video:sync_request': (roomId: string) => void
   'join_room': (roomId: string) => void
   'chat:send': (msg: ChatMessage) => void
+  'audio:track_change': (data: {
+    roomId: string
+    trackUrl: string
+    title?: string | null
+    artist?: string | null
+    artworkUrl?: string | null
+  }) => void
 }
 
 // Входящие события
@@ -26,6 +33,12 @@ export interface SocketOnEvents {
   'room:user_left': (data: { roomId: string; participants: number }) => void
   'room:error': (error: { message: string }) => void
   'chat:message': (msg: ChatMessage) => void
+  'audio:track_change': (data: {
+    trackUrl: string
+    title?: string
+    artist?: string
+    artworkUrl?: string
+  }) => void
 }
 
 export type SocketEvents = SocketEmitEvents & SocketOnEvents

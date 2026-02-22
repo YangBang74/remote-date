@@ -81,6 +81,7 @@ const items = [
           <span v-if="state === 'expanded'" class="whitespace-nowrap">REMOTE DATE</span>
           <span v-else>R</span>
         </Transition>
+        
       </h1>
     </SidebarHeader>
     <SidebarContent>

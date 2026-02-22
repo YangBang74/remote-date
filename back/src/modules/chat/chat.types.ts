@@ -3,4 +3,6 @@ export interface ChatMessage {
   text: string;
   author: string;
   time: number;
+  trackUrl?: string;
+  imageUrl?: string;
 }

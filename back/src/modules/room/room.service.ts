@@ -139,6 +139,25 @@ class RoomService {
     this.roomStates.delete(roomId)
     return this.rooms.delete(roomId)
   }
+
+  /**
+   * Обновляет текущий трек SoundCloud в комнате
+   */
+  updateSoundcloudTrack(
+    roomId: string,
+    url: string,
+    title?: string,
+    artist?: string,
+    artworkUrl?: string
+  ): void {
+    const room = this.rooms.get(roomId)
+    if (room) {
+      room.soundcloudUrl = url
+      room.soundcloudTitle = title
+      room.soundcloudArtist = artist
+      room.soundcloudArtworkUrl = artworkUrl
+    }
+  }
 }
 
 export const roomService = new RoomService()
