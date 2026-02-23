@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Home, BarChart, Settings, Users, MessageCircle } from 'lucide-vue-next'
+import YouTubeIcon from '@/shared/ui/icons/YouTubeIcon.vue'
+import SoundCloudIcon from '@/shared/ui/icons/SoundCloudIcon.vue'
 import { RouterLink } from 'vue-router'
 import {
   Sidebar,
@@ -49,6 +51,16 @@ const items = [
     title: 'Home',
     url: '/',
     icon: Home,
+  },
+  {
+    title: 'YouTube',
+    url: '/youtube',
+    icon: YouTubeIcon,
+  },
+  {
+    title: 'SoundCloud',
+    url: '/soundcloud',
+    icon: SoundCloudIcon,
   },
   {
     title: 'Friends',
