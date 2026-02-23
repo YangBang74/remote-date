@@ -19,6 +19,8 @@ export interface SocketEmitEvents {
     title?: string | null
     artist?: string | null
     artworkUrl?: string | null
+    queue?: { id: string | number; streamUrl: string; title?: string | null; username?: string | null; artworkUrl?: string | null; permalinkUrl?: string; durationMs?: number }[]
+    queueIndex?: number
   }) => void
 }
 
@@ -38,6 +40,8 @@ export interface SocketOnEvents {
     title?: string
     artist?: string
     artworkUrl?: string
+    queue?: { id: string | number; streamUrl: string; title?: string | null; username?: string | null; artworkUrl?: string | null; permalinkUrl?: string; durationMs?: number }[]
+    queueIndex?: number
   }) => void
 }
 

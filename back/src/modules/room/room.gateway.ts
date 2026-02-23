@@ -189,12 +189,14 @@ export default function roomGateway(io: Server) {
         data.artworkUrl
       )
 
-      // Шлём всем остальным участникам информацию о треке
+      // Шлём всем остальным участникам информацию о треке и плейлисте
       socket.to(roomId).emit('audio:track_change', {
         trackUrl: data.trackUrl,
         title: data.title,
         artist: data.artist,
         artworkUrl: data.artworkUrl,
+        queue: data.queue,
+        queueIndex: data.queueIndex,
       })
 
       console.log(`Sound track changed in room ${roomId} -> ${trackUrl}`)

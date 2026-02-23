@@ -27,12 +27,24 @@ export interface VideoState {
   timestamp: number // Время сервера для синхронизации
 }
 
+export interface SoundCloudQueueTrack {
+  id: string | number
+  streamUrl: string
+  title?: string | null
+  username?: string | null
+  artworkUrl?: string | null
+  permalinkUrl?: string
+  durationMs?: number
+}
+
 export interface SoundTrackPayload {
   roomId: string
   trackUrl: string
   title?: string
   artist?: string
   artworkUrl?: string
+  queue?: SoundCloudQueueTrack[]
+  queueIndex?: number
 }
 
 export interface VideoEvent {

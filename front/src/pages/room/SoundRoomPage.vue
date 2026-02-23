@@ -69,7 +69,7 @@ function loadTrack() {
   }
 }
 
-function loadTrackFromChat(url: string) {
+async function loadTrackFromChat(url: string) {
   if (!url) return
   searchQuery.value = url
   currentTrackUrl.value = url
@@ -90,13 +90,16 @@ function loadTrackFromChat(url: string) {
   ]
   currentQueueIndex.value = 0
 
-  socketService.emit('audio:track_change', {
-    roomId,
-    trackUrl: url,
-    title: currentTrackTitle.value,
-    artist: currentTrackArtist.value,
-    artworkUrl: currentArtworkUrl.value,
-  })
+  emitTrackChange()
+  await nextTick()
+  const audio = audioRef.value
+  if (audio) {
+    try {
+      await audio.play()
+    } catch (e) {
+      console.error('Failed to autoplay', e)
+    }
+  }
 }
 
 async function searchSuggestions(query: string) {
@@ -138,7 +141,7 @@ watch(
   }
 )
 
-function selectTrack(track: SoundCloudTrack) {
+async function selectTrack(track: SoundCloudTrack) {
   if (!track.streamUrl) {
     toast.error('This track cannot be played with custom player (no stream URL).')
     return
@@ -164,12 +167,35 @@ function selectTrack(track: SoundCloudTrack) {
   trackQueue.value = queueSlice.length ? queueSlice : [track]
   currentQueueIndex.value = 0
 
+  emitTrackChange()
+  await nextTick()
+  const audio = audioRef.value
+  if (audio) {
+    try {
+      await audio.play()
+    } catch (e) {
+      console.error('Failed to autoplay', e)
+    }
+  }
+}
+
+function emitTrackChange() {
   socketService.emit('audio:track_change', {
     roomId,
-    trackUrl: currentTrackUrl.value,
+    trackUrl: currentTrackUrl.value ?? '',
     title: currentTrackTitle.value,
     artist: currentTrackArtist.value,
     artworkUrl: currentArtworkUrl.value,
+    queue: trackQueue.value.map((t) => ({
+      id: t.id,
+      streamUrl: t.streamUrl ?? '',
+      title: t.title ?? null,
+      username: t.username ?? null,
+      artworkUrl: t.artworkUrl ?? null,
+      permalinkUrl: t.permalinkUrl,
+      durationMs: t.durationMs,
+    })),
+    queueIndex: currentQueueIndex.value ?? 0,
   })
 }
 
@@ -194,15 +220,18 @@ async function selectPlaylist(playlist: SoundCloudPlaylist) {
     currentTrackArtist.value = first.username ?? null
     currentArtworkUrl.value = first.artworkUrl ?? null
 
-    socketService.emit('audio:track_change', {
-      roomId,
-      trackUrl: currentTrackUrl.value,
-      title: currentTrackTitle.value,
-      artist: currentTrackArtist.value,
-      artworkUrl: currentArtworkUrl.value,
-    })
-
+    emitTrackChange()
     toast.success(`Album loaded: ${playable.length} tracks`)
+
+    await nextTick()
+    const audio = audioRef.value
+    if (audio) {
+      try {
+        await audio.play()
+      } catch (e) {
+        console.error('Failed to autoplay', e)
+      }
+    }
   } catch (e: any) {
     console.error(e)
     toast.error(e.message || 'Failed to load album')
@@ -418,6 +447,8 @@ function handleTrackChange(data: {
   title?: string
   artist?: string
   artworkUrl?: string
+  queue?: { id: string | number; streamUrl: string; title?: string | null; username?: string | null; artworkUrl?: string | null; permalinkUrl?: string; durationMs?: number }[]
+  queueIndex?: number
 }) {
   if (!data.trackUrl) return
 
@@ -425,6 +456,19 @@ function handleTrackChange(data: {
   currentTrackTitle.value = data.title ?? 'Shared track'
   currentTrackArtist.value = data.artist ?? null
   currentArtworkUrl.value = data.artworkUrl ?? null
+
+  if (data.queue?.length) {
+    trackQueue.value = data.queue.map((t) => ({
+      id: t.id,
+      title: t.title ?? undefined,
+      username: t.username ?? undefined,
+      artworkUrl: t.artworkUrl ?? undefined,
+      permalinkUrl: t.permalinkUrl ?? '',
+      durationMs: t.durationMs ?? 0,
+      streamUrl: t.streamUrl,
+    })) as SoundTrack[]
+    currentQueueIndex.value = data.queueIndex ?? 0
+  }
 }
 
 // Перейти к треку в очереди по индексу
@@ -440,14 +484,7 @@ async function goToQueueIndex(index: number, autoplay = true) {
   currentTrackArtist.value = track.username ?? null
   currentArtworkUrl.value = track.artworkUrl ?? null
 
-  socketService.emit('audio:track_change', {
-    roomId,
-    trackUrl: currentTrackUrl.value,
-    title: currentTrackTitle.value,
-    artist: currentTrackArtist.value,
-    artworkUrl: currentArtworkUrl.value,
-  })
-
+  emitTrackChange()
   if (autoplay) {
     await nextTick()
     const audio = audioRef.value
@@ -496,6 +533,8 @@ function reorderQueue(newOrderIds: (string | number)[]) {
   trackQueue.value = reordered
   const newIndex = reordered.findIndex((t) => t.id === currentId)
   currentQueueIndex.value = newIndex >= 0 ? newIndex : 0
+
+  emitTrackChange()
 }
 
 onMounted(async () => {
