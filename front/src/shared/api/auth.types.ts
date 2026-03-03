@@ -37,3 +37,11 @@ export interface RefreshTokenResponse {
   accessToken: string
   refreshToken: string
 }
+
+export interface UpdateProfileDto {
+  firstName?: string
+  lastName?: string
+  birthDate?: string
+  sex?: 'male' | 'female' | 'other'
+  avatarUrl?: string
+}

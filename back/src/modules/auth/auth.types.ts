@@ -19,10 +19,30 @@ export interface User {
   password: string
   createdAt: Date
   verified: boolean
+  firstName?: string
+  lastName?: string
+  birthDate?: Date
+  sex?: 'male' | 'female' | 'other'
+  avatarUrl?: string
+}
+
+export interface RegisterCheckResult {
+  message: string
+  userId: string
+  accessToken: string
+  refreshToken: string
 }
 
 export interface VerificationCode {
   email: string
   code: string
   expiresAt: Date
+}
+
+export interface UpdateProfileDto {
+  firstName?: string
+  lastName?: string
+  birthDate?: string
+  sex?: 'male' | 'female' | 'other'
+  avatarUrl?: string
 }

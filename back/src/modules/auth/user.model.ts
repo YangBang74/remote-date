@@ -5,6 +5,11 @@ export interface IUser extends Document {
   password: string
   createdAt: Date
   verified: boolean
+  firstName?: string
+  lastName?: string
+  birthDate?: Date
+  sex?: 'male' | 'female' | 'other'
+  avatarUrl?: string
 }
 
 const UserSchema = new Schema<IUser>(
@@ -19,6 +24,30 @@ const UserSchema = new Schema<IUser>(
     password: {
       type: String,
       required: true,
+    },
+    firstName: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    lastName: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    birthDate: {
+      type: Date,
+      required: false,
+    },
+    sex: {
+      type: String,
+      required: false,
+      enum: ['male', 'female', 'other'],
+    },
+    avatarUrl: {
+      type: String,
+      required: false,
+      trim: true,
     },
     verified: {
       type: Boolean,

@@ -10,6 +10,7 @@ import {
   ProfilePage,
 } from '@/pages'
 import { DefaultLayout, AuthLayout } from '@/app/layout'
+import { authStore } from '@/shared/store/auth.store'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -33,6 +34,22 @@ const router = createRouter({
       children: [{ path: '', component: AuthPage }],
     },
   ],
+})
+
+router.beforeEach(async (to, from, next) => {
+  // Для страниц авторизации доступ всегда открыт
+  if (to.path.startsWith('/auth')) {
+    return next()
+  }
+
+  // Инициализируем store и проверяем авторизацию
+  const isAuthenticated = await authStore.initialize()
+
+  if (!isAuthenticated) {
+    return next('/auth')
+  }
+
+  return next()
 })
 
 export default router

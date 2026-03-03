@@ -1,5 +1,12 @@
 import * as bcrypt from 'bcrypt'
-import type { RegisterDto, RegisterCheckDto, LoginDto, VerificationCode } from './auth.types'
+import type {
+  RegisterDto,
+  RegisterCheckDto,
+  LoginDto,
+  VerificationCode,
+  UpdateProfileDto,
+  RegisterCheckResult,
+} from './auth.types'
 import { emailService } from './email.service'
 import { User, IUser } from './user.model'
 import { RefreshToken } from './refresh-token.model'
@@ -101,7 +108,7 @@ class AuthService {
    */
   async registerCheck(
     dto: RegisterCheckDto
-  ): Promise<{ message: string; userId: string; token: string }> {
+  ): Promise<RegisterCheckResult> {
     const { email, code } = dto
 
     const normalizedEmail = email.toLowerCase()
@@ -297,6 +304,64 @@ class AuthService {
    */
   async logoutAll(userId: string): Promise<void> {
     await RefreshToken.deleteMany({ userId })
+  }
+
+  /**
+   * Обновление профиля пользователя
+   */
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<IUser> {
+    const update: Partial<IUser> = {}
+
+    if (dto.firstName !== undefined) {
+      update.firstName = dto.firstName
+    }
+    if (dto.lastName !== undefined) {
+      update.lastName = dto.lastName
+    }
+    if (dto.avatarUrl !== undefined) {
+      update.avatarUrl = dto.avatarUrl
+    }
+    if (dto.sex !== undefined) {
+      update.sex = dto.sex
+    }
+    if (dto.birthDate !== undefined) {
+      const date = dto.birthDate ? new Date(dto.birthDate) : null
+      if (date && !isNaN(date.getTime())) {
+        update.birthDate = date
+      } else if (!dto.birthDate) {
+        update.birthDate = undefined
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(userId, update, { new: true })
+
+    if (!user) {
+      throw new Error('User not found')
+    }
+
+    return user
+  }
+
+  /**
+   * Создать дефолтного администратора, если его еще нет.
+   * Используется при инициализации приложения.
+   */
+  async ensureDefaultAdmin(): Promise<void> {
+    const adminEmail = 'admin@a.a'
+    const adminPassword = 'vvv2000vvv'
+
+    const existing = await User.findOne({ email: adminEmail.toLowerCase() })
+    if (existing) {
+      return
+    }
+
+    const hashedPassword = await bcrypt.hash(adminPassword, 10)
+
+    await User.create({
+      email: adminEmail.toLowerCase(),
+      password: hashedPassword,
+      verified: true,
+    })
   }
 }
 

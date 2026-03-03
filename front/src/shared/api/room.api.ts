@@ -1,11 +1,12 @@
 import { API_BASE_URL } from '../config/api'
+import { authAPI } from './auth.api'
 import type { VideoRoom, CreateRoomDto, VideoState } from './room.types'
 
 class RoomAPI {
   private baseUrl = `${API_BASE_URL}/rooms`
 
   async createRoom(dto: CreateRoomDto): Promise<VideoRoom> {
-    const response = await fetch(this.baseUrl, {
+    const response = await authAPI.fetchWithAuth(this.baseUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -22,7 +23,7 @@ class RoomAPI {
   }
 
   async getRoom(roomId: string): Promise<VideoRoom> {
-    const response = await fetch(`${this.baseUrl}/${roomId}`)
+    const response = await authAPI.fetchWithAuth(`${this.baseUrl}/${roomId}`)
 
     if (!response.ok) {
       const error = await response.json()
@@ -33,7 +34,7 @@ class RoomAPI {
   }
 
   async getRoomState(roomId: string): Promise<VideoState> {
-    const response = await fetch(`${this.baseUrl}/${roomId}/state`)
+    const response = await authAPI.fetchWithAuth(`${this.baseUrl}/${roomId}/state`)
 
     if (!response.ok) {
       const error = await response.json()

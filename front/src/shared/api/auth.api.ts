@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../config/api'
 import { tokenService } from './token.service'
+import router from '@/app/routes/router'
 import type {
   RegisterDto,
   RegisterCheckDto,
@@ -8,6 +9,7 @@ import type {
   RegisterCheckResponse,
   LoginResponse,
   RefreshTokenResponse,
+  UpdateProfileDto,
 } from './auth.types'
 
 class AuthAPI {
@@ -78,7 +80,7 @@ class AuthAPI {
   /**
    * Выполнить запрос с автоматическим обновлением токена при ошибке 401
    */
-  private async fetchWithAuth(
+  public async fetchWithAuth(
     url: string,
     options: RequestInit = {}
   ): Promise<Response> {
@@ -102,9 +104,16 @@ class AuthAPI {
             ...options.headers,
           },
         })
+
+        // Если после обновления токена все еще 401 — считаем, что сессия недействительна
+        if (response.status === 401) {
+          tokenService.clearTokens()
+          router.push('/auth')
+        }
       } catch (error) {
-        // Если не удалось обновить, очищаем токены
+        // Если не удалось обновить, очищаем токены и отправляем на авторизацию
         tokenService.clearTokens()
+        router.push('/auth')
         throw error
       }
     }
@@ -201,6 +210,9 @@ class AuthAPI {
     email: string
     firstName?: string
     lastName?: string
+    birthDate?: string
+    sex?: 'male' | 'female' | 'other'
+    avatarUrl?: string
     verified: boolean
     createdAt: string
   }> {
@@ -209,6 +221,36 @@ class AuthAPI {
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.error || 'Failed to get user info')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Обновление профиля текущего пользователя
+   */
+  async updateProfile(dto: UpdateProfileDto): Promise<{
+    userId: string
+    email: string
+    firstName?: string
+    lastName?: string
+    birthDate?: string
+    sex?: 'male' | 'female' | 'other'
+    avatarUrl?: string
+    verified: boolean
+    createdAt: string
+  }> {
+    const response = await this.fetchWithAuth(`${this.baseUrl}/me`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(dto),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to update profile')
     }
 
     return response.json()

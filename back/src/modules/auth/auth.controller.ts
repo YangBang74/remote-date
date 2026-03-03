@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import { authService } from './auth.service'
-import type { RegisterDto, RegisterCheckDto, LoginDto } from './auth.types'
+import type { RegisterDto, RegisterCheckDto, LoginDto, UpdateProfileDto } from './auth.types'
 import { AuthRequest } from './auth.middleware'
 
 export const AuthController = {
@@ -93,6 +93,11 @@ export const AuthController = {
       res.json({
         userId: user._id.toString(),
         email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        birthDate: user.birthDate,
+        sex: user.sex,
+        avatarUrl: user.avatarUrl,
         verified: user.verified,
         createdAt: user.createdAt,
       })
@@ -117,6 +122,35 @@ export const AuthController = {
       res.status(200).json(result)
     } catch (error: any) {
       res.status(401).json({ error: error.message || 'Failed to refresh token' })
+    }
+  },
+
+  /**
+   * Обновление профиля текущего пользователя
+   * PATCH /api/auth/me
+   */
+  async updateMe(req: AuthRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+
+      const body = req.body as UpdateProfileDto
+      const user = await authService.updateProfile(req.user.userId, body)
+
+      res.json({
+        userId: user._id.toString(),
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        birthDate: user.birthDate,
+        sex: user.sex,
+        avatarUrl: user.avatarUrl,
+        verified: user.verified,
+        createdAt: user.createdAt,
+      })
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || 'Failed to update profile' })
     }
   },
 

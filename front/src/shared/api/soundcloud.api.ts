@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/shared/config/api'
+import { authAPI } from './auth.api'
 
 export interface SoundCloudTrack {
   id: number
@@ -40,7 +41,7 @@ class SoundCloudAPI {
     url.searchParams.set('limit', String(limit))
     url.searchParams.set('filter', filter)
 
-    const res = await fetch(url.toString())
+    const res = await authAPI.fetchWithAuth(url.toString())
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({}))
@@ -52,7 +53,7 @@ class SoundCloudAPI {
   }
 
   async getPlaylistTracks(playlistId: string | number): Promise<SoundCloudTrack[]> {
-    const res = await fetch(`${this.baseUrl}/playlist/${playlistId}`)
+    const res = await authAPI.fetchWithAuth(`${this.baseUrl}/playlist/${playlistId}`)
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({}))

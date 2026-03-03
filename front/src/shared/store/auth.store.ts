@@ -10,6 +10,9 @@ export interface User {
   email: string
   firstName?: string
   lastName?: string
+  birthDate?: string
+  sex?: 'male' | 'female' | 'other'
+  avatarUrl?: string
   verified: boolean
   createdAt: string
 }
