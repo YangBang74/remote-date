@@ -1,0 +1,165 @@
+use axum::{
+    extract::State,
+    routing::{get, post},
+    Json, Router,
+};
+use axum::routing::patch;
+
+use crate::auth::dto::{
+    LoginDto, RegisterCheckDto, RegisterDto, RefreshTokenRequest, UpdateProfileDto,
+};
+use crate::auth::extractor::AuthUser;
+use crate::auth::service::AuthService;
+use crate::config::AppContext;
+
+/// Router for /api/auth endpoints.
+pub fn router() -> Router<AppContext> {
+    Router::new()
+        .route("/register", post(register))
+        .route("/register-check", post(register_check))
+        .route("/login", post(login))
+        .route("/refresh", post(refresh))
+        .route("/logout", post(logout))
+        .route("/me", get(get_me).patch(update_me))
+}
+
+async fn register(
+    State(state): State<AppContext>,
+    Json(dto): Json<RegisterDto>,
+) -> (axum::http::StatusCode, Json<serde_json::Value>) {
+    let mut store = state.auth_store.write().await;
+    match AuthService::register(&state.settings, &mut store, dto).await {
+        Ok(resp) => (
+            axum::http::StatusCode::OK,
+            Json(serde_json::to_value(resp).unwrap()),
+        ),
+        Err(err) => (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": err.to_string() })),
+        ),
+    }
+}
+
+async fn register_check(
+    State(state): State<AppContext>,
+    Json(dto): Json<RegisterCheckDto>,
+) -> (axum::http::StatusCode, Json<serde_json::Value>) {
+    let mut store = state.auth_store.write().await;
+    match AuthService::register_check(&state.settings, &mut store, dto).await {
+        Ok(resp) => (
+            axum::http::StatusCode::OK,
+            Json(serde_json::to_value(resp).unwrap()),
+        ),
+        Err(err) => (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": err.to_string() })),
+        ),
+    }
+}
+
+async fn login(
+    State(state): State<AppContext>,
+    Json(dto): Json<LoginDto>,
+) -> (axum::http::StatusCode, Json<serde_json::Value>) {
+    let mut store = state.auth_store.write().await;
+    match AuthService::login(&state.settings, &mut store, dto).await {
+        Ok(resp) => (
+            axum::http::StatusCode::OK,
+            Json(serde_json::to_value(resp).unwrap()),
+        ),
+        Err(err) => (
+            axum::http::StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({ "error": err.to_string() })),
+        ),
+    }
+}
+
+async fn refresh(
+    State(state): State<AppContext>,
+    Json(dto): Json<RefreshTokenRequest>,
+) -> (axum::http::StatusCode, Json<serde_json::Value>) {
+    let mut store = state.auth_store.write().await;
+    match AuthService::refresh_access_token(
+        &state.settings,
+        &mut store,
+        dto.refresh_token,
+    )
+    .await
+    {
+        Ok(resp) => (
+            axum::http::StatusCode::OK,
+            Json(serde_json::to_value(resp).unwrap()),
+        ),
+        Err(err) => (
+            axum::http::StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({ "error": err.to_string() })),
+        ),
+    }
+}
+
+async fn logout(
+    State(state): State<AppContext>,
+    Json(dto): Json<RefreshTokenRequest>,
+) -> (axum::http::StatusCode, Json<serde_json::Value>) {
+    let mut store = state.auth_store.write().await;
+    let _ = AuthService::logout(&mut store, dto.refresh_token).await;
+    (
+        axum::http::StatusCode::OK,
+        Json(serde_json::json!({ "message": "Logged out successfully" })),
+    )
+}
+
+async fn get_me(
+    State(state): State<AppContext>,
+    user: AuthUser,
+) -> (axum::http::StatusCode, Json<serde_json::Value>) {
+    let store = state.auth_store.read().await;
+    match store.get_user_by_id(&user.user_id) {
+        Some(u) => {
+            let body = serde_json::json!({
+                "userId": u.id,
+                "email": u.email,
+                "firstName": u.first_name,
+                "lastName": u.last_name,
+                "birthDate": u.birth_date,
+                "sex": u.sex,
+                "avatarUrl": u.avatar_url,
+                "verified": u.verified,
+                "createdAt": u.created_at,
+            });
+            (axum::http::StatusCode::OK, Json(body))
+        }
+        None => (
+            axum::http::StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "User not found" })),
+        ),
+    }
+}
+
+async fn update_me(
+    State(state): State<AppContext>,
+    user: AuthUser,
+    Json(dto): Json<UpdateProfileDto>,
+) -> (axum::http::StatusCode, Json<serde_json::Value>) {
+    let mut store = state.auth_store.write().await;
+    match AuthService::update_profile(&mut store, user.user_id, dto).await {
+        Ok(u) => {
+            let body = serde_json::json!({
+                "userId": u.id,
+                "email": u.email,
+                "firstName": u.first_name,
+                "lastName": u.last_name,
+                "birthDate": u.birth_date,
+                "sex": u.sex,
+                "avatarUrl": u.avatar_url,
+                "verified": u.verified,
+                "createdAt": u.created_at,
+            });
+            (axum::http::StatusCode::OK, Json(body))
+        }
+        Err(err) => (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": err.to_string() })),
+        ),
+    }
+}

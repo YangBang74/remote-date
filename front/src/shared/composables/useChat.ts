@@ -29,9 +29,6 @@ export function useChat(roomId: string) {
       console.error('checkAuth in useChat failed', e)
     }
 
-    socketService.connect()
-    socketService.emit('join_room', roomId)
-
     socketService.on('chat:message', (msg) => {
       if (msg.room === roomId) {
         messages.value.push(msg)

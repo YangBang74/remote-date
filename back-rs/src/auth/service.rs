@@ -1,0 +1,229 @@
+use anyhow::{anyhow, Result};
+use bcrypt::{hash, verify};
+
+use crate::auth::dto::{
+    LoginDto, LoginResponse, RegisterCheckDto, RegisterCheckResponse, RegisterDto,
+    RegisterResponse, RefreshTokenResponse, UpdateProfileDto,
+};
+use crate::auth::jwt;
+use crate::auth::models::{AuthStore, Sex};
+use crate::config::Settings;
+
+const CODE_EXPIRY_MINUTES: i64 = 15;
+const REFRESH_TOKEN_EXPIRY_DAYS: i64 = 30;
+
+pub struct AuthService;
+
+impl AuthService {
+    pub async fn register(
+        settings: &Settings,
+        store: &mut AuthStore,
+        dto: RegisterDto,
+    ) -> Result<RegisterResponse> {
+        let email = dto.email.trim().to_lowercase();
+        let password = dto.password;
+
+        let email_regex =
+            regex::Regex::new(r"^[^\s@]+@[^\s@]+\.[^\s@]+$").unwrap();
+        if !email_regex.is_match(&email) {
+            return Err(anyhow!("Invalid email format"));
+        }
+
+        if password.len() < 6 {
+            return Err(anyhow!("Password must be at least 6 characters"));
+        }
+
+        if let Some(existing) = store.get_user_by_email(&email) {
+            if existing.verified {
+                return Err(anyhow!("User with this email already exists"));
+            }
+        }
+
+        // Hash password and create (unverified) user
+        let hashed_password = hash(password, 10)?;
+        store.create_user(email.clone(), hashed_password, false);
+
+        // Generate verification code and store it
+        let code = format!("{:06}", fastrand::u32(0..1_000_000));
+        store.save_verification_code(email.clone(), code.clone(), CODE_EXPIRY_MINUTES);
+
+        // In Rust version we just log the code; front-end UX stays the same.
+        tracing::info!("Verification code for {email}: {code}");
+
+        Ok(RegisterResponse {
+            message: "Verification code sent to your email".to_string(),
+            email,
+        })
+    }
+
+    pub async fn register_check(
+        settings: &Settings,
+        store: &mut AuthStore,
+        dto: RegisterCheckDto,
+    ) -> Result<RegisterCheckResponse> {
+        let email = dto.email.trim().to_lowercase();
+        let code = dto.code.trim().to_string();
+
+        let vc = store
+            .take_verification_code(&email)
+            .ok_or_else(|| anyhow!("Verification code not found or expired"))?;
+
+        if chrono::Utc::now() > vc.expires_at {
+            return Err(anyhow!("Verification code has expired"));
+        }
+
+        if vc.code != code {
+            return Err(anyhow!("Invalid verification code"));
+        }
+
+        let mut user = store
+            .get_user_by_email(&email)
+            .cloned()
+            .ok_or_else(|| anyhow!("User not found"))?;
+        user.verified = true;
+        store.users.insert(user.id.clone(), user.clone());
+
+        let access_token =
+            jwt::generate_access_token(settings, user.id.clone(), user.email.clone())?;
+        let refresh_token = uuid::Uuid::new_v4().to_string();
+        store.store_refresh_token(
+            user.id.clone(),
+            refresh_token.clone(),
+            REFRESH_TOKEN_EXPIRY_DAYS,
+        );
+
+        Ok(RegisterCheckResponse {
+            message: "Registration successful".to_string(),
+            user_id: user.id,
+            access_token,
+            refresh_token,
+        })
+    }
+
+    pub async fn login(
+        settings: &Settings,
+        store: &mut AuthStore,
+        dto: LoginDto,
+    ) -> Result<LoginResponse> {
+        let email = dto.email.trim().to_lowercase();
+        let password = dto.password;
+
+        let user = store
+            .get_user_by_email(&email)
+            .cloned()
+            .ok_or_else(|| anyhow!("Invalid email or password"))?;
+
+        if !user.verified {
+            return Err(anyhow!("Please verify your email first"));
+        }
+
+        if !verify(password, &user.password_hash)? {
+            return Err(anyhow!("Invalid email or password"));
+        }
+
+        let access_token =
+            jwt::generate_access_token(settings, user.id.clone(), user.email.clone())?;
+        let refresh_token = uuid::Uuid::new_v4().to_string();
+        store.store_refresh_token(
+            user.id.clone(),
+            refresh_token.clone(),
+            REFRESH_TOKEN_EXPIRY_DAYS,
+        );
+
+        Ok(LoginResponse {
+            message: "Login successful".to_string(),
+            user_id: user.id,
+            email: user.email,
+            access_token,
+            refresh_token,
+        })
+    }
+
+    pub async fn refresh_access_token(
+        settings: &Settings,
+        store: &mut AuthStore,
+        refresh_token: String,
+    ) -> Result<RefreshTokenResponse> {
+        let token_doc = store
+            .get_refresh_token(&refresh_token)
+            .cloned()
+            .ok_or_else(|| anyhow!("Invalid refresh token"))?;
+
+        if chrono::Utc::now() > token_doc.expires_at {
+            store.delete_refresh_token(&refresh_token);
+            return Err(anyhow!("Refresh token has expired"));
+        }
+
+        let user = store
+            .get_user_by_id(&token_doc.user_id)
+            .cloned()
+            .ok_or_else(|| anyhow!("User not found or not verified"))?;
+
+        if !user.verified {
+            return Err(anyhow!("User not found or not verified"));
+        }
+
+        let new_access =
+            jwt::generate_access_token(settings, user.id.clone(), user.email.clone())?;
+        let new_refresh = uuid::Uuid::new_v4().to_string();
+
+        store.delete_refresh_token(&refresh_token);
+        store.store_refresh_token(
+            user.id.clone(),
+            new_refresh.clone(),
+            REFRESH_TOKEN_EXPIRY_DAYS,
+        );
+
+        Ok(RefreshTokenResponse {
+            access_token: new_access,
+            refresh_token: new_refresh,
+        })
+    }
+
+    pub async fn logout(store: &mut AuthStore, refresh_token: String) -> Result<()> {
+        store.delete_refresh_token(&refresh_token);
+        Ok(())
+    }
+
+    pub async fn update_profile(
+        store: &mut AuthStore,
+        user_id: String,
+        dto: UpdateProfileDto,
+    ) -> Result<crate::auth::models::User> {
+        let mut user = store
+            .get_user_by_id(&user_id)
+            .cloned()
+            .ok_or_else(|| anyhow!("User not found"))?;
+
+        if let Some(first) = dto.first_name {
+            user.first_name = Some(first);
+        }
+        if let Some(last) = dto.last_name {
+            user.last_name = Some(last);
+        }
+        if let Some(url) = dto.avatar_url {
+            user.avatar_url = Some(url);
+        }
+        if let Some(sex) = dto.sex {
+            user.sex = match sex.as_str() {
+                "male" => Some(Sex::Male),
+                "female" => Some(Sex::Female),
+                "other" => Some(Sex::Other),
+                _ => user.sex,
+            };
+        }
+        if let Some(birth) = dto.birth_date {
+            if !birth.is_empty() {
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&birth) {
+                    user.birth_date = Some(dt.with_timezone(&chrono::Utc));
+                }
+            } else {
+                user.birth_date = None;
+            }
+        }
+
+        store.users.insert(user.id.clone(), user.clone());
+        Ok(user)
+    }
+}
+

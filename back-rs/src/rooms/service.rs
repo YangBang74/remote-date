@@ -1,0 +1,145 @@
+use std::collections::HashMap;
+
+use anyhow::{anyhow, Result};
+use chrono::Utc;
+use regex::Regex;
+use uuid::Uuid;
+
+use crate::rooms::models::{CreateRoomDto, RoomType, VideoRoom, VideoState};
+
+#[derive(Debug, Default)]
+pub struct RoomStore {
+    rooms: HashMap<String, VideoRoom>,
+    states: HashMap<String, VideoState>,
+}
+
+impl RoomStore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+pub struct RoomService;
+
+impl RoomService {
+    fn extract_video_id(url: &str) -> Option<String> {
+        let patterns = [
+            r"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([^&\n?#]+)",
+            r"youtube\.com/watch\?.*v=([^&\n?#]+)",
+        ];
+
+        for pat in patterns {
+            let re = Regex::new(pat).ok()?;
+            if let Some(caps) = re.captures(url) {
+                if let Some(m) = caps.get(1) {
+                    return Some(m.as_str().to_string());
+                }
+            }
+        }
+        None
+    }
+
+    pub fn create_room(store: &mut RoomStore, dto: CreateRoomDto) -> Result<VideoRoom> {
+        let mut room_type;
+        let mut youtube_video_id = None;
+
+        if let Some(youtube_url) = &dto.youtube_url {
+            let video_id = Self::extract_video_id(youtube_url)
+                .ok_or_else(|| anyhow!("Invalid YouTube URL"))?;
+            room_type = RoomType::Youtube;
+            youtube_video_id = Some(video_id);
+        } else if dto.soundcloud_url.is_some() || matches!(dto.room_type, Some(RoomType::Soundcloud)) {
+            room_type = RoomType::Soundcloud;
+        } else {
+            return Err(anyhow!(
+                "Either youtubeUrl or soundcloudUrl or type is required"
+            ));
+        }
+
+        let id = Uuid::new_v4().to_string();
+        let room = VideoRoom {
+            id: id.clone(),
+            room_type,
+            youtube_url: dto.youtube_url.clone(),
+            youtube_video_id,
+            soundcloud_url: dto.soundcloud_url.clone(),
+            soundcloud_title: None,
+            soundcloud_artist: None,
+            soundcloud_artwork_url: None,
+            created_at: Utc::now(),
+            current_time: 0.0,
+            is_playing: false,
+            participants: 0,
+        };
+
+        let state = VideoState {
+            current_time: 0.0,
+            is_playing: false,
+            timestamp: chrono::Utc::now().timestamp_millis(),
+        };
+
+        store.rooms.insert(id.clone(), room.clone());
+        store.states.insert(id.clone(), state);
+
+        Ok(room)
+    }
+
+    pub fn get_room(store: &RoomStore, room_id: &str) -> Option<VideoRoom> {
+        store.rooms.get(room_id).cloned()
+    }
+
+    pub fn get_room_state(store: &RoomStore, room_id: &str) -> Option<VideoState> {
+        store.states.get(room_id).cloned()
+    }
+
+    pub fn update_room_state(
+        store: &mut RoomStore,
+        room_id: &str,
+        state: Option<VideoState>,
+    ) -> Option<VideoState> {
+        let current = store.states.get(room_id)?.clone();
+        let mut new_state = current;
+        if let Some(s) = state {
+            new_state.current_time = s.current_time;
+            new_state.is_playing = s.is_playing;
+        }
+        new_state.timestamp = chrono::Utc::now().timestamp_millis();
+        store.states.insert(room_id.to_string(), new_state.clone());
+
+        if let Some(room) = store.rooms.get_mut(room_id) {
+            room.current_time = new_state.current_time;
+            room.is_playing = new_state.is_playing;
+        }
+
+        Some(new_state)
+    }
+
+    pub fn add_participant(store: &mut RoomStore, room_id: &str) {
+        if let Some(room) = store.rooms.get_mut(room_id) {
+            room.participants = room.participants.saturating_add(1);
+        }
+    }
+
+    pub fn remove_participant(store: &mut RoomStore, room_id: &str) {
+        if let Some(room) = store.rooms.get_mut(room_id) {
+            room.participants = room.participants.saturating_sub(1);
+        }
+    }
+
+    pub fn update_soundcloud_metadata(
+        store: &mut RoomStore,
+        room_id: &str,
+        url: &str,
+        title: Option<String>,
+        artist: Option<String>,
+        artwork_url: Option<String>,
+    ) {
+        if let Some(room) = store.rooms.get_mut(room_id) {
+            room.soundcloud_url = Some(url.to_string());
+            room.soundcloud_title = title;
+            room.soundcloud_artist = artist;
+            room.soundcloud_artwork_url = artwork_url;
+        }
+    }
+}
+
