@@ -6,6 +6,9 @@ class TokenService {
    * Сохранить токены в localStorage
    */
   setTokens(accessToken: string, refreshToken: string): void {
+    if (!accessToken || !refreshToken) {
+      throw new Error('Invalid tokens received from server')
+    }
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
   }

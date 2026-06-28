@@ -12,7 +12,7 @@ use crate::soundcloud::service;
 pub fn router() -> Router<AppContext> {
     Router::new()
         .route("/search", get(search_tracks))
-        .route("/playlist/:id", get(playlist_not_implemented))
+        .route("/playlist/{id}", get(playlist_not_implemented))
 }
 
 #[derive(Debug, Deserialize)]

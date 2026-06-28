@@ -9,7 +9,7 @@ use crate::config::AppContext;
 
 /// Router for /api/chat endpoints.
 pub fn router() -> Router<AppContext> {
-    Router::new().route("/:room", get(get_room_messages))
+    Router::new().route("/{room}", get(get_room_messages))
 }
 
 async fn get_room_messages(

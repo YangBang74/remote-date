@@ -7,14 +7,14 @@ use axum::{
 
 use crate::config::AppContext;
 use crate::rooms::models::CreateRoomDto;
-use crate::rooms::service::{RoomService, RoomStore};
+use crate::rooms::service::RoomService;
 
 /// Router for /api/rooms endpoints.
 pub fn router() -> Router<AppContext> {
     Router::new()
         .route("/", post(create_room))
-        .route("/:id", get(get_room))
-        .route("/:id/state", get(get_room_state))
+        .route("/{id}", get(get_room))
+        .route("/{id}/state", get(get_room_state))
 }
 
 async fn create_room(

@@ -11,14 +11,13 @@ npm install
 
 ## Настройка переменных окружения
 
-Создайте файл `.env` в папке `front` (опционально):
+Создайте `.env.development` (или скопируйте из `.env.example`):
 
 ```env
-VITE_API_URL=http://localhost:5000/api
-VITE_SOCKET_URL=http://localhost:5000
+VITE_API_PORT=5001
 ```
 
-По умолчанию используются эти значения, если переменные не заданы.
+Vite проксирует `/api` и `/ws` на `http://localhost:5001` — фронт ходит на тот же origin (`:5173`), CORS не нужен.
 
 ## Запуск
 

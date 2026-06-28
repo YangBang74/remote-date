@@ -5,7 +5,7 @@ import { RouterView } from 'vue-router'
 import { ThemeToggle } from '@/shared/ui/theme-toggle'
 </script>
 <template>
-  <SidebarProvider>
+  <SidebarProvider :default-open="true">
     <div class="flex min-h-screen w-full">
       <Sidebar />
 

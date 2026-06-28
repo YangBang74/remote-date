@@ -4,6 +4,7 @@ use axum::{routing::get, Router};
 use dotenvy::dotenv;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
+use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod config;
@@ -39,8 +40,14 @@ async fn main() -> anyhow::Result<()> {
         chat_store: std::sync::Arc::new(RwLock::new(chat::service::ChatStore::new())),
     };
 
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     let app: Router<_> = http::build_router()
         .route("/ws", get(ws::ws_handler))
+        .layer(cors)
         .with_state(app_state);
 
     let addr: SocketAddr = format!("0.0.0.0:{}", settings.port).parse()?;
