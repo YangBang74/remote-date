@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import { authStore } from '@/entities/user'
+import { Toaster } from '@/shared/ui/sonner'
 
 // Инициализируем auth store при загрузке приложения
 onMounted(async () => {
@@ -12,4 +13,5 @@ onMounted(async () => {
 
 <template>
   <RouterView />
+  <Toaster />
 </template>

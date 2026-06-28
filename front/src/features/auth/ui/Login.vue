@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import {
   Card,
   CardHeader,
@@ -31,24 +32,27 @@ const handleLogin = async (e: Event) => {
 
   if (!email.value || !password.value) {
     error.value = 'Please fill in all fields'
+    toast.error('Please fill in all fields')
     return
   }
 
   isLoading.value = true
 
   try {
-    const result = await authAPI.login({
+    await authAPI.login({
       email: email.value,
       password: password.value,
     })
 
     // Обновляем данные пользователя в store
     await authStore.refreshUser()
-    
-    console.log('Login successful:', result)
+
+    toast.success('Welcome back!')
     router.push('/')
   } catch (err: any) {
-    error.value = err.message || 'Login failed'
+    const message = err.message || 'Login failed'
+    error.value = message
+    toast.error(message)
   } finally {
     isLoading.value = false
   }

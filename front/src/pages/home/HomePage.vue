@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { ArrowRight } from 'lucide-vue-next'
+import { PhArrowRight } from '@phosphor-icons/vue'
 import YouTubeIcon from '@/shared/ui/icons/YouTubeIcon.vue'
 import SoundCloudIcon from '@/shared/ui/icons/SoundCloudIcon.vue'
 
@@ -64,7 +64,7 @@ const platforms = [
             </span>
           </span>
 
-          <ArrowRight
+          <PhArrowRight
             class="home-page__link-arrow size-4 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
           />
         </RouterLink>

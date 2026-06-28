@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
+import { toast } from 'vue-sonner'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { useRoom } from '@/entities/room'
@@ -35,6 +36,7 @@ onMounted(async () => {
 
     if (room.value?.type !== 'youtube') {
       error.value = 'This is not a YouTube room'
+      toast.error('This is not a YouTube room')
       loading.value = false
       return
     }
@@ -43,7 +45,9 @@ onMounted(async () => {
     await setupPlayer()
   } catch (err: unknown) {
     console.error('Error in onMounted:', err)
-    error.value = err instanceof Error ? err.message : 'Failed to load room'
+    const message = err instanceof Error ? err.message : 'Failed to load room'
+    error.value = message
+    toast.error(message)
     loading.value = false
   }
 })
@@ -53,9 +57,13 @@ onBeforeRouteLeave(() => {
   teardownPlayer()
 })
 
-function copyLink() {
-  navigator.clipboard.writeText(currentUrl.value)
-  alert('Link copied!')
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(currentUrl.value)
+    toast.success('Link copied to clipboard')
+  } catch {
+    toast.error('Could not copy link')
+  }
 }
 
 function handleVideoSelect(video: YoutubeVideo) {

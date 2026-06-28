@@ -136,6 +136,7 @@ export function useSoundcloudPlayer(
       await audio.play()
     } catch (e) {
       console.error('Failed to autoplay', e)
+      toast.info('Press play to start audio')
     }
   }
 

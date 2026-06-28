@@ -2,12 +2,12 @@
 import { computed, watch } from "vue";
 import { useRoute, RouterLink } from "vue-router";
 import {
-  Home,
-  BarChart,
-  Settings,
-  Users,
-  MessageCircle,
-} from "lucide-vue-next";
+  PhHouse,
+  PhChartBar,
+  PhGear,
+  PhUsers,
+  PhChatCircle,
+} from "@phosphor-icons/vue";
 import YouTubeIcon from "@/shared/ui/icons/YouTubeIcon.vue";
 import SoundCloudIcon from "@/shared/ui/icons/SoundCloudIcon.vue";
 import {
@@ -83,16 +83,16 @@ const avatarInitials = computed(() => {
 });
 
 const mainItems = [
-  { title: "Home", url: "/", icon: Home },
+  { title: "Home", url: "/", icon: PhHouse },
   { title: "YouTube", url: "/youtube", icon: YouTubeIcon },
   { title: "SoundCloud", url: "/soundcloud", icon: SoundCloudIcon },
 ];
 
 const secondaryItems = [
-  { title: "Friends", url: "/friends", icon: Users },
-  { title: "Messages", url: "/messages", icon: MessageCircle },
-  { title: "Statistics", url: "/statistics", icon: BarChart },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Friends", url: "/friends", icon: PhUsers },
+  { title: "Messages", url: "/messages", icon: PhChatCircle },
+  { title: "Statistics", url: "/statistics", icon: PhChartBar },
+  { title: "Settings", url: "/settings", icon: PhGear },
 ];
 </script>
 

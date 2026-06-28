@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowRight, Loader2, LogIn, Plus } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
+import { PhArrowRight, PhSpinner, PhSignIn, PhPlus } from '@phosphor-icons/vue'
 import { roomAPI } from '@/shared/api/room.api'
 import { Input } from '@/shared/ui/input'
 import { Button } from '@/shared/ui/button'
@@ -22,7 +23,9 @@ async function createRoom() {
     const room = await roomAPI.createRoom({ type: 'soundcloud' })
     router.push(`/sound-room/${room.id}`)
   } catch (err: unknown) {
-    createError.value = err instanceof Error ? err.message : 'Failed to create room'
+    const message = err instanceof Error ? err.message : 'Failed to create room'
+    createError.value = message
+    toast.error(message)
   } finally {
     createLoading.value = false
   }
@@ -32,6 +35,7 @@ async function joinRoom() {
   const id = roomIdToJoin.value.trim()
   if (!id) {
     joinError.value = 'Please enter a room ID'
+    toast.error('Please enter a room ID')
     return
   }
 
@@ -42,11 +46,14 @@ async function joinRoom() {
     const room = await roomAPI.getRoom(id)
     if (room.type !== 'soundcloud') {
       joinError.value = 'This is not a SoundCloud room'
+      toast.error('This is not a SoundCloud room')
       return
     }
     router.push(`/sound-room/${id}`)
   } catch (err: unknown) {
-    joinError.value = err instanceof Error ? err.message : 'Room not found'
+    const message = err instanceof Error ? err.message : 'Room not found'
+    joinError.value = message
+    toast.error(message)
   } finally {
     joinLoading.value = false
   }
@@ -82,11 +89,11 @@ async function joinRoom() {
           <span
             class="soundcloud-page__create-icon flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted/50"
           >
-            <Loader2
+            <PhSpinner
               v-if="createLoading"
               class="soundcloud-page__create-spinner size-4 animate-spin text-muted-foreground"
             />
-            <Plus v-else class="soundcloud-page__create-plus size-4 text-muted-foreground" />
+            <PhPlus v-else class="soundcloud-page__create-plus size-4 text-muted-foreground" />
           </span>
 
           <span class="soundcloud-page__create-body min-w-0 flex-1">
@@ -100,7 +107,7 @@ async function joinRoom() {
             </span>
           </span>
 
-          <ArrowRight
+          <PhArrowRight
             class="soundcloud-page__create-arrow size-4 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
           />
         </button>
@@ -109,7 +116,7 @@ async function joinRoom() {
           class="soundcloud-page__join rounded-xl border border-border/60 bg-card/40 p-4 space-y-3"
         >
           <div class="soundcloud-page__join-header flex items-center gap-2">
-            <LogIn class="soundcloud-page__join-icon size-4 text-muted-foreground" />
+            <PhSignIn class="soundcloud-page__join-icon size-4 text-muted-foreground" />
             <h2 class="soundcloud-page__join-title text-sm font-medium">Join room</h2>
           </div>
 

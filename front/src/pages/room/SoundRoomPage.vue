@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
+import { toast } from 'vue-sonner'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { useRoom } from '@/entities/room'
@@ -63,6 +64,7 @@ onMounted(async () => {
 
     if (room.value?.type !== 'soundcloud') {
       error.value = 'SoundCloud room not found'
+      toast.error('SoundCloud room not found')
       loading.value = false
       return
     }
@@ -71,7 +73,9 @@ onMounted(async () => {
     setup()
   } catch (err: unknown) {
     console.error(err)
-    error.value = err instanceof Error ? err.message : 'Failed to load SoundCloud room'
+    const message = err instanceof Error ? err.message : 'Failed to load SoundCloud room'
+    error.value = message
+    toast.error(message)
     loading.value = false
   }
 })

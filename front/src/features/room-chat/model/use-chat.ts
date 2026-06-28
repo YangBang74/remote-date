@@ -1,4 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue'
+import { toast } from 'vue-sonner'
 import { socketService } from '@/shared/api/socket.service'
 import type { ChatMessage } from '@/shared/api/chat.types'
 import { API_BASE_URL } from '@/shared/config/api'
@@ -41,6 +42,7 @@ export function useChat(roomId: string) {
       }
     } catch (e) {
       console.error('Failed to load chat history', e)
+      toast.error('Failed to load chat history')
     }
   })
 
@@ -50,6 +52,11 @@ export function useChat(roomId: string) {
 
   const send = () => {
     if (!newMessage.value.trim()) return
+
+    if (!socketService.isConnected()) {
+      toast.error('Message not sent. Check your connection')
+      return
+    }
 
     const text = newMessage.value.trim()
     const urlRegex = /https?:\/\/\S+/g
@@ -103,9 +110,20 @@ export function useChat(roomId: string) {
 
     const isImage = file.type.startsWith('image/')
     const isAudio = file.type.startsWith('audio/')
-    if (!isImage && !isAudio) return
+    if (!isImage && !isAudio) {
+      toast.error('Only image and audio files are supported')
+      return
+    }
+
+    if (!socketService.isConnected()) {
+      toast.error('File not sent. Check your connection')
+      return
+    }
 
     const reader = new FileReader()
+    reader.onerror = () => {
+      toast.error('Failed to send file')
+    }
     reader.onload = () => {
       const displayName =
         user.value?.firstName && user.value?.lastName

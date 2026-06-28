@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Sidebar } from "@/widgets";
+import { Sidebar, AppBreadcrumbs } from "@/widgets";
 import {
   SidebarInset,
   SidebarProvider,
@@ -17,8 +17,15 @@ import { ThemeToggle } from "@/shared/ui/theme-toggle";
         <header
           class="app-layout__header flex justify-between md:h-14 h-12 shrink-0 items-center gap-2 px-4"
         >
-          <SidebarTrigger class="app-layout__sidebar-trigger -ml-1" />
-          <ThemeToggle class="app-layout__theme-toggle" />
+          <div
+            class="app-layout__header-start flex min-w-0 flex-1 items-center gap-2"
+          >
+            <SidebarTrigger
+              class="app-layout__sidebar-trigger -ml-1 shrink-0"
+            />
+            <AppBreadcrumbs class="app-layout__breadcrumbs min-w-0" />
+          </div>
+          <ThemeToggle class="app-layout__theme-toggle shrink-0" />
         </header>
         <div class="app-layout__body flex flex-1 flex-col">
           <RouterView class="app-layout__content flex-1" />

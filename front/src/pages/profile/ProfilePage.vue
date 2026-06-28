@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { toast } from 'vue-sonner'
 import { authStore } from '@/entities/user'
 import { authAPI } from '@/shared/api/auth.api'
 
@@ -33,8 +34,11 @@ const onSubmit = async () => {
 
     authStore.setUser(updated)
     success.value = true
+    toast.success('Profile saved')
   } catch (e: any) {
-    error.value = e?.message || 'Failed to update profile'
+    const message = e?.message || 'Failed to update profile'
+    error.value = message
+    toast.error(message)
   } finally {
     isSaving.value = false
   }

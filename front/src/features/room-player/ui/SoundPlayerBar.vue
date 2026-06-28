@@ -3,15 +3,15 @@ import { computed, ref } from "vue";
 import { Button } from "@/shared/ui/button";
 import { Slider } from "@/shared/ui/slider";
 import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Volume2,
-  VolumeX,
-  ListMusic,
-  GripVertical,
-} from "lucide-vue-next";
+  PhPlay,
+  PhPause,
+  PhSkipBack,
+  PhSkipForward,
+  PhSpeakerHigh,
+  PhSpeakerSlash,
+  PhPlaylist,
+  PhDotsSixVertical,
+} from "@phosphor-icons/vue";
 import DropdownMenu from "@/shared/ui/dropdown-menu/DropdownMenu.vue";
 import DropdownMenuTrigger from "@/shared/ui/dropdown-menu/DropdownMenuTrigger.vue";
 import DropdownMenuContent from "@/shared/ui/dropdown-menu/DropdownMenuContent.vue";
@@ -217,7 +217,7 @@ const handleVolumeChange = (values?: number[]) => {
           :disabled="!canGoPrev"
           @click="emit('prev')"
         >
-          <SkipBack class="w-4 h-4" />
+          <PhSkipBack class="w-4 h-4" />
         </Button>
 
         <!-- Play / Pause -->
@@ -228,8 +228,8 @@ const handleVolumeChange = (values?: number[]) => {
           :disabled="!canPlay"
           @click="emit('togglePlay')"
         >
-          <span v-if="!isPlaying"><Play class="w-4 h-4" /></span>
-          <span v-else><Pause class="size-4" /></span>
+          <span v-if="!isPlaying"><PhPlay class="w-4 h-4" weight="fill" /></span>
+          <span v-else><PhPause class="size-4" weight="fill" /></span>
         </Button>
 
         <!-- Next -->
@@ -240,7 +240,7 @@ const handleVolumeChange = (values?: number[]) => {
           :disabled="!canGoNext"
           @click="emit('next')"
         >
-          <SkipForward class="w-4 h-4" />
+          <PhSkipForward class="w-4 h-4" />
         </Button>
 
         <!-- Queue dropdown -->
@@ -252,7 +252,7 @@ const handleVolumeChange = (values?: number[]) => {
                 variant="ghost"
                 class="text-muted-foreground hover:text-foreground"
               >
-                <ListMusic class="w-4 h-4" />
+                <PhPlaylist class="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -287,7 +287,7 @@ const handleVolumeChange = (values?: number[]) => {
                     @mousedown.stop
                     @click.stop
                   >
-                    <GripVertical class="size-3.5" />
+                    <PhDotsSixVertical class="size-3.5" />
                   </span>
                   <div class="flex-1 min-w-0 flex flex-col items-start gap-0.5">
                     <span class="text-xs font-medium truncate w-full">
@@ -314,8 +314,8 @@ const handleVolumeChange = (values?: number[]) => {
             class="text-muted-foreground hover:text-foreground"
             @click="emit('toggleMute')"
           >
-            <VolumeX v-if="muted || volume === 0" class="w-4 h-4" />
-            <Volume2 v-else class="w-4 h-4" />
+            <PhSpeakerSlash v-if="muted || volume === 0" class="w-4 h-4" />
+            <PhSpeakerHigh v-else class="w-4 h-4" />
           </Button>
           <Slider
             :model-value="[muted ? 0 : volume]"

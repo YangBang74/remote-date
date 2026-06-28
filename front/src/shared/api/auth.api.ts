@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../config/api'
 import { tokenService } from './token.service'
 import router from '@/app/routes/router'
+import { toast } from 'vue-sonner'
 import type {
   RegisterDto,
   RegisterCheckDto,
@@ -108,11 +109,12 @@ class AuthAPI {
         // Если после обновления токена все еще 401 — считаем, что сессия недействительна
         if (response.status === 401) {
           tokenService.clearTokens()
+          toast.error('Session expired. Please log in again.')
           router.push('/auth')
         }
       } catch (error) {
-        // Если не удалось обновить, очищаем токены и отправляем на авторизацию
         tokenService.clearTokens()
+        toast.error('Session expired. Please log in again.')
         router.push('/auth')
         throw error
       }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
+import { toast } from 'vue-sonner'
 import {
   Dialog,
   DialogContent,
@@ -115,6 +116,7 @@ const handleVerify = async () => {
 
   if (code.length !== 6) {
     error.value = 'Please enter a 6-digit code'
+    toast.error('Please enter a 6-digit code')
     return
   }
 
@@ -129,8 +131,11 @@ const handleVerify = async () => {
 
     emit('verified', result.userId)
     emit('update:open', false)
+    toast.success('Email verified')
   } catch (err: any) {
-    error.value = err.message || 'Invalid verification code'
+    const message = err.message || 'Invalid verification code'
+    error.value = message
+    toast.error(message)
     // Очищаем все поля при ошибке
     codeInputs.value = ['', '', '', '', '', '']
     nextTick(() => {

@@ -1,4 +1,5 @@
 import { ref, onUnmounted } from 'vue'
+import { toast } from 'vue-sonner'
 import { roomAPI } from '@/shared/api/room.api'
 import { socketService } from '@/shared/api/socket.service'
 import type { VideoRoom } from '@/shared/api/room.types'
@@ -23,6 +24,7 @@ export function useRoom(roomId: string) {
 
   const onRoomError = (err: { message: string }) => {
     console.error('Room error:', err.message)
+    toast.error(err.message || 'Room error')
   }
 
   function bindSocketListeners() {

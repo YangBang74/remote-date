@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { toast } from 'vue-sonner'
 import {
   HomePage,
   AboutPage,
@@ -46,6 +47,7 @@ router.beforeEach(async (to, _from, next) => {
   const isAuthenticated = await authStore.initialize()
 
   if (!isAuthenticated) {
+    toast.info('Please log in to continue')
     return next('/auth')
   }
 

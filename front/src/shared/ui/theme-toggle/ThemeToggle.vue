@@ -1,6 +1,6 @@
 <script setup>
 import { useColorMode } from '@vueuse/core'
-import { Sun, Moon } from 'lucide-vue-next'
+import { PhSun, PhMoon } from '@phosphor-icons/vue'
 import { Button } from '@/shared/ui/button'
 
 const mode = useColorMode()
@@ -12,7 +12,7 @@ const toggleTheme = () => {
 
 <template>
   <Button variant="ghost" size="icon" @click="toggleTheme">
-    <Sun v-if="mode === 'dark'" class="h-5 w-5" />
-    <Moon v-else class="h-5 w-5" />
+    <PhSun v-if="mode === 'dark'" class="h-5 w-5" />
+    <PhMoon v-else class="h-5 w-5" />
   </Button>
 </template>

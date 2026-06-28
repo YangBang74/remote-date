@@ -3,7 +3,7 @@ import type { HTMLAttributes } from 'vue'
 import { ref, computed } from 'vue'
 import { useVModel } from '@vueuse/core'
 import { cn } from '@/shared/lib/utils'
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { PhEye, PhEyeSlash } from '@phosphor-icons/vue'
 
 const props = defineProps<{
   defaultValue?: string | number
@@ -60,8 +60,8 @@ function togglePasswordVisibility() {
       @click="togglePasswordVisibility"
       class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
       tabindex="-1">
-      <Eye v-if="!showPassword" class="h-4 w-4" />
-      <EyeOff v-else class="h-4 w-4" />
+      <PhEye v-if="!showPassword" class="h-4 w-4" />
+      <PhEyeSlash v-else class="h-4 w-4" />
     </button>
   </div>
 </template>

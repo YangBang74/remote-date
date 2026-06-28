@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { Search, Loader2 } from 'lucide-vue-next'
+import { PhMagnifyingGlass, PhSpinner } from '@phosphor-icons/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -149,11 +149,11 @@ function submitSearch() {
         <span
           class="soundcloud-track-search__icon-wrap pointer-events-none absolute left-3 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center text-muted-foreground"
         >
-          <Loader2
+          <PhSpinner
             v-if="isSearching || isSelectingTrack"
             class="soundcloud-track-search__search-icon soundcloud-track-search__search-icon--loading size-4 animate-spin"
           />
-          <Search v-else class="soundcloud-track-search__search-icon size-4" />
+          <PhMagnifyingGlass v-else class="soundcloud-track-search__search-icon size-4" />
         </span>
         <Input
           v-model="searchQuery"

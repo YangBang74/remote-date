@@ -1,42 +1,62 @@
 <script lang="ts" setup>
 import type { ToasterProps } from "vue-sonner"
-import { CircleCheckIcon, InfoIcon, Loader2Icon, OctagonXIcon, TriangleAlertIcon, XIcon } from "lucide-vue-next"
+import { reactiveOmit, useColorMode } from "@vueuse/core"
+import { computed } from "vue"
+import {
+  PhCheck,
+  PhInfo,
+  PhWarning,
+  PhXCircle,
+} from "@phosphor-icons/vue"
 import { Toaster as Sonner } from "vue-sonner"
-import { cn } from '@/shared/lib/utils'
+import "./sonner.css"
 
-const props = defineProps<ToasterProps>()
+const props = withDefaults(defineProps<ToasterProps>(), {
+  position: "bottom-right",
+  closeButton: false,
+  duration: 4500,
+  visibleToasts: 4,
+  expand: true,
+  gap: 8,
+  offset: "1.25rem",
+})
+
+const delegatedProps = reactiveOmit(props, "toastOptions", "theme")
+
+const colorMode = useColorMode()
+const theme = computed(() => (colorMode.value === "dark" ? "dark" : "light"))
 </script>
 
 <template>
   <Sonner
-    :class="cn('toaster group', props.class)"
-    :style="{
-      '--normal-bg': 'var(--popover)',
-      '--normal-text': 'var(--popover-foreground)',
-      '--normal-border': 'var(--border)',
-      '--border-radius': 'var(--radius)',
+    class="toaster pointer-events-auto"
+    :theme="theme"
+    :toast-options="{
+      unstyled: true,
+      classes: {
+        toast: 'sonner-toast',
+        title: 'sonner-toast__title',
+        description: 'sonner-toast__description',
+        actionButton: 'sonner-toast__action',
+        cancelButton: 'sonner-toast__cancel',
+      },
     }"
-    v-bind="props"
+    v-bind="delegatedProps"
   >
     <template #success-icon>
-      <CircleCheckIcon class="size-4" />
+      <PhCheck class="sonner-toast__icon sonner-toast__icon--success" weight="bold" />
     </template>
     <template #info-icon>
-      <InfoIcon class="size-4" />
+      <PhInfo class="sonner-toast__icon sonner-toast__icon--info" weight="bold" />
     </template>
     <template #warning-icon>
-      <TriangleAlertIcon class="size-4" />
+      <PhWarning class="sonner-toast__icon sonner-toast__icon--warning" weight="bold" />
     </template>
     <template #error-icon>
-      <OctagonXIcon class="size-4" />
+      <PhXCircle class="sonner-toast__icon sonner-toast__icon--error" weight="bold" />
     </template>
     <template #loading-icon>
-      <div>
-        <Loader2Icon class="size-4 animate-spin" />
-      </div>
-    </template>
-    <template #close-icon>
-      <XIcon class="size-4" />
+      <span class="sonner-toast__loader" aria-hidden="true" />
     </template>
   </Sonner>
 </template>

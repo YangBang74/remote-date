@@ -1,4 +1,5 @@
 import { ref, onUnmounted, nextTick, type Ref } from 'vue'
+import { toast } from 'vue-sonner'
 import { socketService } from '@/shared/api/socket.service'
 import type { VideoRoom, VideoState } from '@/shared/api/room.types'
 import { loadYouTubeAPI } from './load-youtube-api'
@@ -166,6 +167,7 @@ export function useYoutubePlayer(
     const YT = window.YT
     if (!YT?.Player) {
       playerError.value = 'Failed to load YouTube IFrame API'
+      toast.error('Failed to load YouTube player')
       return
     }
 
@@ -204,12 +206,14 @@ export function useYoutubePlayer(
       console.error('Error initializing player:', err)
       const message = err instanceof Error ? err.message : 'Unknown error'
       playerError.value = 'Failed to initialize YouTube player: ' + message
+      toast.error('Failed to initialize YouTube player')
     }
   }
 
   function onPlayerError(event: { data: number }) {
     console.error('YouTube player error:', event.data)
     playerError.value = 'Error loading video. Please check the video URL.'
+    toast.error('Error loading video. Check the URL.')
   }
 
   function onPlayerReady(event: { target: YoutubePlayerInstance }) {
@@ -456,6 +460,7 @@ export function useYoutubePlayer(
         }, 500)
       } catch (e) {
         console.error('Error loading video:', e)
+        toast.error('Failed to load video')
         destroyPlayer()
         await initializePlayer()
       }
@@ -489,6 +494,7 @@ export function useYoutubePlayer(
       channelTitle: data.channelTitle ?? null,
       thumbnailUrl: data.thumbnailUrl ?? null,
     })
+    toast.success('Video changed for everyone in the room')
   }
 
   async function setup() {

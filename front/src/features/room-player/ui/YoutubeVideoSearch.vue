@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { Search } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
+import { PhMagnifyingGlass } from '@phosphor-icons/vue'
 import { Input } from '@/shared/ui/input'
 import { youtubeAPI, type YoutubeVideo } from '@/shared/api/youtube.api'
 import { extractYoutubeVideoId } from '../model/youtube.utils'
@@ -31,7 +32,9 @@ async function searchVideos(query: string) {
     searchError.value = null
     suggestions.value = await youtubeAPI.searchVideos(query, 10)
   } catch (err: unknown) {
-    searchError.value = err instanceof Error ? err.message : 'Failed to search'
+    const message = err instanceof Error ? err.message : 'Failed to search'
+    searchError.value = message
+    toast.error(message)
     suggestions.value = []
   } finally {
     isSearching.value = false
@@ -76,7 +79,7 @@ function submitSearch() {
 <template>
   <div class="youtube-video-search relative">
     <div class="youtube-video-search__field relative">
-      <Search
+      <PhMagnifyingGlass
         class="youtube-video-search__icon pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
       />
       <Input

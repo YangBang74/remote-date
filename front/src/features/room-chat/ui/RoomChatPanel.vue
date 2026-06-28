@@ -3,7 +3,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import type { ChatMessage } from '@/shared/api/chat.types'
-import { Plus, Send } from 'lucide-vue-next'
+import { PhPlus, PhPaperPlaneRight } from '@phosphor-icons/vue'
 
 type UiChatMessage = ChatMessage & {
   isOwn?: boolean
@@ -160,7 +160,7 @@ watch(
           class="room-chat-panel__attach size-9 shrink-0"
           @click="openFileDialog"
         >
-          <Plus class="size-4" />
+          <PhPlus class="size-4" />
         </Button>
 
         <Button
@@ -169,7 +169,7 @@ watch(
           class="room-chat-panel__send size-9 shrink-0"
           @click="emit('send')"
         >
-          <Send class="size-4" />
+          <PhPaperPlaneRight class="size-4" />
         </Button>
       </div>
     </footer>

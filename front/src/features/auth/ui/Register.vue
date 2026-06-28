@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import {
   Card,
   CardHeader,
@@ -36,16 +37,19 @@ const handleRegister = async (e: Event) => {
   // Валидация
   if (!email.value || !password.value || !confirmPassword.value) {
     error.value = 'Please fill in all fields'
+    toast.error('Please fill in all fields')
     return
   }
 
   if (password.value !== confirmPassword.value) {
     error.value = 'Passwords do not match'
+    toast.error('Passwords do not match')
     return
   }
 
   if (password.value.length < 6) {
     error.value = 'Password must be at least 6 characters'
+    toast.error('Password must be at least 6 characters')
     return
   }
 
@@ -59,17 +63,19 @@ const handleRegister = async (e: Event) => {
     
     registeredEmail.value = email.value
     showVerificationDialog.value = true
+    toast.info('Verification code sent to your email')
   } catch (err: any) {
-    error.value = err.message || 'Registration failed'
+    const message = err.message || 'Registration failed'
+    error.value = message
+    toast.error(message)
   } finally {
     isLoading.value = false
   }
 }
 
-const handleVerified = async (userId: string) => {
-  // После успешной верификации обновляем данные пользователя в store
-  console.log('User verified:', userId)
+const handleVerified = async (_userId: string) => {
   await authStore.refreshUser()
+  toast.success('Account verified. Welcome!')
   router.push('/')
 }
 

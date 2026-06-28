@@ -1,4 +1,5 @@
 import { SOCKET_URL } from "../config/api";
+import { toast } from "vue-sonner";
 import type { VideoState } from "./room.types";
 import type { ChatMessage } from "./chat.types";
 
@@ -82,6 +83,7 @@ class SocketService {
   private ws: WebSocket | null = null;
   private listeners = new Map<keyof SocketOnEvents, Set<Function>>();
   private pendingQueue: string[] = [];
+  private errorToastShown = false;
 
   private flushQueue() {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
@@ -103,6 +105,7 @@ class SocketService {
 
     this.ws.onopen = () => {
       console.log("WebSocket connected:", SOCKET_URL);
+      this.errorToastShown = false;
       this.flushQueue();
     };
 
@@ -113,6 +116,10 @@ class SocketService {
 
     this.ws.onerror = () => {
       console.error("WebSocket error:", SOCKET_URL);
+      if (!this.errorToastShown) {
+        this.errorToastShown = true;
+        toast.error("Connection error. Trying to reconnect…");
+      }
     };
 
     this.ws.onmessage = (event) => {
