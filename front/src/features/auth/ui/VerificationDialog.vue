@@ -147,41 +147,58 @@ const handleClose = () => {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="handleClose">
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Verify Your Email</DialogTitle>
-        <DialogDescription>
-          We've sent a verification code to <strong>{{ email }}</strong
+  <Dialog class="verification-dialog" :open="open" @update:open="handleClose">
+    <DialogContent class="verification-dialog__content sm:max-w-md">
+      <DialogHeader class="verification-dialog__header">
+        <DialogTitle class="verification-dialog__title">Verify Your Email</DialogTitle>
+        <DialogDescription class="verification-dialog__description">
+          We've sent a verification code to <strong class="verification-dialog__email">{{ email }}</strong
           >. Please enter the code below.
         </DialogDescription>
       </DialogHeader>
 
-      <div class="space-y-4 py-4">
-        <div class="space-y-2">
-          <Label>Verification Code</Label>
-          <div class="flex items-center justify-between gap-2" @paste.prevent="handlePaste">
+      <div class="verification-dialog__body space-y-4 py-4">
+        <div class="verification-dialog__field space-y-2">
+          <Label class="verification-dialog__label">Verification Code</Label>
+          <div
+            class="verification-dialog__code-inputs flex items-center justify-between gap-2"
+            @paste.prevent="handlePaste"
+          >
             <input
               v-for="(_, index) in codeInputs"
               :key="index"
               :ref="(el) => (inputRefs[index] = el as HTMLInputElement)"
               v-model="codeInputs[index]"
+              class="verification-dialog__code-digit w-12 h-12 text-center text-2xl font-bold border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               type="text"
               inputmode="numeric"
               maxlength="1"
-              class="w-12 h-12 text-center text-2xl font-bold border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               :disabled="isLoading"
               @input="(e) => handleInput(index, e)"
               @keydown="(e) => handleKeyDown(index, e)"
-              @keyup.enter="handleVerify" />
+              @keyup.enter="handleVerify"
+            />
           </div>
-          <p v-if="error" class="text-sm text-left text-destructive mt-2">{{ error }}</p>
+          <p v-if="error" class="verification-dialog__error text-sm text-left text-destructive mt-2">
+            {{ error }}
+          </p>
         </div>
       </div>
 
-      <DialogFooter>
-        <Button variant="outline" @click="handleClose" :disabled="isLoading"> Cancel </Button>
-        <Button @click="handleVerify" :disabled="isLoading || getCode().length !== 6">
+      <DialogFooter class="verification-dialog__footer">
+        <Button
+          class="verification-dialog__cancel"
+          variant="outline"
+          :disabled="isLoading"
+          @click="handleClose"
+        >
+          Cancel
+        </Button>
+        <Button
+          class="verification-dialog__submit"
+          :disabled="isLoading || getCode().length !== 6"
+          @click="handleVerify"
+        >
           {{ isLoading ? 'Verifying...' : 'Verify' }}
         </Button>
       </DialogFooter>

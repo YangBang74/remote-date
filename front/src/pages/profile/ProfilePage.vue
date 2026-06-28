@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { authStore } from '@/shared/store/auth.store'
+import { authStore } from '@/entities/user'
 import { authAPI } from '@/shared/api/auth.api'
 
 const user = computed(() => authStore.user.value)
@@ -42,60 +42,60 @@ const onSubmit = async () => {
 </script>
 
 <template>
-  <div class="max-w-xl mx-auto py-8 px-4 space-y-6">
-    <h1 class="text-2xl font-semibold">Profile</h1>
+  <div class="profile-page max-w-xl mx-auto py-8 px-4 space-y-6">
+    <h1 class="profile-page__title text-2xl font-semibold">Profile</h1>
 
-    <form class="space-y-4" @submit.prevent="onSubmit">
-      <div class="space-y-1">
-        <label class="block text-sm font-medium text-muted-foreground">Avatar URL</label>
+    <form class="profile-page__form space-y-4" @submit.prevent="onSubmit">
+      <div class="profile-page__field profile-page__field--avatar space-y-1">
+        <label class="profile-page__label block text-sm font-medium text-muted-foreground">Avatar URL</label>
         <input
           v-model="avatarUrl"
+          class="profile-page__input profile-page__input--avatar w-full border border-border rounded-md px-3 py-2 bg-background"
           type="url"
-          class="w-full border border-border rounded-md px-3 py-2 bg-background"
           placeholder="https://..."
         />
-        <div v-if="avatarUrl" class="mt-2">
+        <div v-if="avatarUrl" class="profile-page__avatar-preview mt-2">
           <img
             :src="avatarUrl"
             alt="Avatar preview"
-            class="w-20 h-20 rounded-full object-cover border border-border"
+            class="profile-page__avatar-image w-20 h-20 rounded-full object-cover border border-border"
           />
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-muted-foreground">First Name</label>
+      <div class="profile-page__row profile-page__row--name grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="profile-page__field profile-page__field--first-name">
+          <label class="profile-page__label block text-sm font-medium text-muted-foreground">First Name</label>
           <input
             v-model="firstName"
+            class="profile-page__input profile-page__input--first-name w-full border border-border rounded-md px-3 py-2 bg-background"
             type="text"
-            class="w-full border border-border rounded-md px-3 py-2 bg-background"
           />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-muted-foreground">Last Name</label>
+        <div class="profile-page__field profile-page__field--last-name">
+          <label class="profile-page__label block text-sm font-medium text-muted-foreground">Last Name</label>
           <input
             v-model="lastName"
+            class="profile-page__input profile-page__input--last-name w-full border border-border rounded-md px-3 py-2 bg-background"
             type="text"
-            class="w-full border border-border rounded-md px-3 py-2 bg-background"
           />
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-muted-foreground">Birth Date</label>
+      <div class="profile-page__row profile-page__row--details grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="profile-page__field profile-page__field--birth-date">
+          <label class="profile-page__label block text-sm font-medium text-muted-foreground">Birth Date</label>
           <input
             v-model="birthDate"
+            class="profile-page__input profile-page__input--birth-date w-full border border-border rounded-md px-3 py-2 bg-background"
             type="date"
-            class="w-full border border-border rounded-md px-3 py-2 bg-background"
           />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-muted-foreground">Sex</label>
+        <div class="profile-page__field profile-page__field--sex">
+          <label class="profile-page__label block text-sm font-medium text-muted-foreground">Sex</label>
           <select
             v-model="sex"
-            class="w-full border border-border rounded-md px-3 py-2 bg-background"
+            class="profile-page__select profile-page__select--sex w-full border border-border rounded-md px-3 py-2 bg-background"
           >
             <option value="">Not specified</option>
             <option value="male">Male</option>
@@ -105,17 +105,17 @@ const onSubmit = async () => {
         </div>
       </div>
 
-      <div class="pt-2 flex items-center gap-4">
+      <div class="profile-page__actions pt-2 flex items-center gap-4">
         <button
           type="submit"
-          class="inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
+          class="profile-page__submit inline-flex items-center justify-center px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
           :disabled="isSaving"
         >
           {{ isSaving ? 'Saving...' : 'Save changes' }}
         </button>
 
-        <span v-if="success" class="text-sm text-emerald-500">Saved</span>
-        <span v-if="error" class="text-sm text-destructive">{{ error }}</span>
+        <span v-if="success" class="profile-page__success text-sm text-emerald-500">Saved</span>
+        <span v-if="error" class="profile-page__error text-sm text-destructive">{{ error }}</span>
       </div>
     </form>
   </div>

@@ -12,7 +12,7 @@ import {
   Label,
 } from '@/shared/ui'
 import { authAPI } from '@/shared/api/auth.api'
-import { authStore } from '@/shared/store/auth.store'
+import { authStore } from '@/entities/user'
 
 const emit = defineEmits<{
   (e: 'register'): void
@@ -56,50 +56,55 @@ const handleLogin = async (e: Event) => {
 </script>
 
 <template>
-  <Card class="w-full max-w-md">
-    <CardHeader>
-      <CardTitle class="text-2xl font-bold">Login</CardTitle>
-      <CardDescription>Login to your account to continue</CardDescription>
+  <Card class="login-form w-full max-w-md">
+    <CardHeader class="login-form__header">
+      <CardTitle class="login-form__title text-2xl font-bold">Login</CardTitle>
+      <CardDescription class="login-form__description">Login to your account to continue</CardDescription>
     </CardHeader>
-    <CardContent>
-      <form class="flex flex-col items-stretch justify-center gap-4" @submit="handleLogin">
-        <div v-if="error" class="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+    <CardContent class="login-form__content">
+      <form class="login-form__form flex flex-col items-stretch justify-center gap-4" @submit="handleLogin">
+        <div v-if="error" class="login-form__error p-3 text-sm text-destructive bg-destructive/10 rounded-md">
           {{ error }}
         </div>
-        <div class="space-y-2">
-          <Label for="email">Email</Label>
+        <div class="login-form__field login-form__field--email space-y-2">
+          <Label class="login-form__label" for="email">Email</Label>
           <Input
             id="email"
             v-model="email"
+            class="login-form__input login-form__input--email"
             type="email"
             placeholder="Email"
             required
-            :disabled="isLoading" />
+            :disabled="isLoading"
+          />
         </div>
-        <div class="space-y-2">
-          <Label for="password">Password</Label>
+        <div class="login-form__field login-form__field--password space-y-2">
+          <Label class="login-form__label" for="password">Password</Label>
           <Input
             id="password"
             v-model="password"
+            class="login-form__input login-form__input--password"
             type="password"
             variant="password"
             placeholder="Password"
             required
-            :disabled="isLoading" />
-          <button type="button" class="text-left hover:text-muted-foreground transition">
+            :disabled="isLoading"
+          />
+          <button type="button" class="login-form__forgot text-left hover:text-muted-foreground transition">
             Forgot password?
           </button>
         </div>
-        <Button type="submit" class="w-full" :disabled="isLoading">
+        <Button type="submit" class="login-form__submit w-full" :disabled="isLoading">
           {{ isLoading ? 'Logging in...' : 'Login' }}
         </Button>
-        <div class="space-y-2">
-          <p class="text-center text-sm text-muted-foreground">
+        <div class="login-form__footer space-y-2">
+          <p class="login-form__switch text-center text-sm text-muted-foreground">
             Don't have an account?
             <button
               type="button"
-              class="text-foreground hover:text-primary/80 transition"
-              @click="emit('register')">
+              class="login-form__switch-link text-foreground hover:text-primary/80 transition"
+              @click="emit('register')"
+            >
               Register
             </button>
           </p>

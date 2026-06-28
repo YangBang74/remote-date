@@ -5,17 +5,17 @@ import { RouterView } from 'vue-router'
 import { ThemeToggle } from '@/shared/ui/theme-toggle'
 </script>
 <template>
-  <SidebarProvider :default-open="true">
-    <div class="flex min-h-screen w-full">
+  <SidebarProvider>
+    <div class="app-layout flex min-h-screen w-full">
       <Sidebar />
 
-      <SidebarInset>
-        <header class="flex justify-between md:h-14 h-12 shrink-0 items-center gap-2 px-4">
-          <SidebarTrigger class="-ml-1" />
-          <ThemeToggle />
+      <SidebarInset class="app-layout__main">
+        <header class="app-layout__header flex justify-between md:h-14 h-12 shrink-0 items-center gap-2 px-4">
+          <SidebarTrigger class="app-layout__sidebar-trigger -ml-1" />
+          <ThemeToggle class="app-layout__theme-toggle" />
         </header>
-        <div class="flex flex-1 flex-col">
-          <RouterView class="flex-1" />
+        <div class="app-layout__body flex flex-1 flex-col">
+          <RouterView class="app-layout__content flex-1" />
           <Footer />
         </div>
       </SidebarInset>

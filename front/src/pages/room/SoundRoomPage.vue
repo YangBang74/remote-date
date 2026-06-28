@@ -6,16 +6,15 @@ import type { VideoRoom, VideoState } from '@/shared/api/room.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
-import SoundPlayerBar from './ui/SoundPlayerBar.vue'
+import { SoundPlayerBar } from '@/features/room-player'
 import { socketService } from '@/shared/api/socket.service'
-import { useChat } from '@/shared/composables/useChat'
+import { useChat, RoomChatPanel } from '@/features/room-chat'
 import {
   soundCloudAPI,
   type SoundCloudTrack,
   type SoundCloudPlaylist,
 } from '@/shared/api/soundcloud.api'
 import { toast } from 'vue-sonner'
-import RoomChatPanel from './ui/RoomChatPanel.vue'
 
 const route = useRoute()
 const router = useRouter()

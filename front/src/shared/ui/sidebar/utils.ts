@@ -8,6 +8,24 @@ export const SIDEBAR_WIDTH_MOBILE = "18rem";
 export const SIDEBAR_WIDTH_ICON = "4rem";
 export const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
+export function readSidebarOpen(): boolean {
+  try {
+    const stored = localStorage.getItem(SIDEBAR_COOKIE_NAME);
+    if (stored === null) return true;
+    return stored === "true";
+  } catch {
+    return true;
+  }
+}
+
+export function persistSidebarOpen(open: boolean): void {
+  try {
+    localStorage.setItem(SIDEBAR_COOKIE_NAME, String(open));
+  } catch {
+    // ignore quota / private mode errors
+  }
+}
+
 export const [useSidebar, provideSidebarContext] = createContext<{
   state: ComputedRef<"expanded" | "collapsed">;
   open: Ref<boolean>;

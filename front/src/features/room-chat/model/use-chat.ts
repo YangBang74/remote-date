@@ -2,31 +2,29 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { socketService } from '@/shared/api/socket.service'
 import type { ChatMessage } from '@/shared/api/chat.types'
 import { API_BASE_URL } from '@/shared/config/api'
-import { useAuth } from '@/enteties/useAuth'
+import { authStore } from '@/entities/user'
 
 export function useChat(roomId: string) {
   const messages = ref<ChatMessage[]>([])
   const newMessage = ref('')
   const currentUserName = ref<string | null>(null)
-  const { user, checkAuth } = useAuth()
+  const user = authStore.user
 
   onMounted(async () => {
-    // Пытаемся подтянуть пользователя, если есть токены
     try {
-      await checkAuth()
+      await authStore.refreshUser()
 
       const u = user.value
       if (u) {
-        const displayName =
+        currentUserName.value =
           u.firstName && u.lastName
             ? `${u.firstName} ${u.lastName}`
             : u.firstName
-            ? u.firstName
-            : u.email || 'Guest'
-        currentUserName.value = displayName
+              ? u.firstName
+              : u.email || 'Guest'
       }
     } catch (e) {
-      console.error('checkAuth in useChat failed', e)
+      console.error('refreshUser in useChat failed', e)
     }
 
     socketService.on('chat:message', (msg) => {
@@ -57,7 +55,6 @@ export function useChat(roomId: string) {
     const urlRegex = /https?:\/\/\S+/g
     const urls = text.match(urlRegex) || []
 
-    // В SoundCloud room считаем музыкальными только ссылки на SoundCloud
     const isSoundCloudUrl = (url: string) =>
       /^https?:\/\/(soundcloud\.com|on\.soundcloud\.com)\//i.test(url)
 
@@ -78,13 +75,13 @@ export function useChat(roomId: string) {
         imageUrl = url
       }
     }
-    console.log('user', user.value)
+
     const displayName =
       user.value?.firstName && user.value?.lastName
         ? `${user.value.firstName} ${user.value.lastName}`
         : user.value?.firstName
-        ? user.value.firstName
-        : user.value?.email || 'Guest'
+          ? user.value.firstName
+          : user.value?.email || 'Guest'
 
     currentUserName.value = displayName
 
@@ -110,14 +107,12 @@ export function useChat(roomId: string) {
 
     const reader = new FileReader()
     reader.onload = () => {
-      const dataUrl = reader.result as string
-
       const displayName =
         user.value?.firstName && user.value?.lastName
           ? `${user.value.firstName} ${user.value.lastName}`
           : user.value?.firstName
-          ? user.value.firstName
-          : user.value?.email || 'Guest'
+            ? user.value.firstName
+            : user.value?.email || 'Guest'
 
       currentUserName.value = displayName
 
@@ -126,8 +121,8 @@ export function useChat(roomId: string) {
         author: displayName,
         text: file.name,
         time: Date.now(),
-        trackUrl: isAudio ? dataUrl : undefined,
-        imageUrl: isImage ? dataUrl : undefined,
+        trackUrl: isAudio ? (reader.result as string) : undefined,
+        imageUrl: isImage ? (reader.result as string) : undefined,
       }
 
       socketService.emit('chat:send', msg)
@@ -138,4 +133,3 @@ export function useChat(roomId: string) {
 
   return { messages, newMessage, send, sendFile, currentUserName }
 }
-

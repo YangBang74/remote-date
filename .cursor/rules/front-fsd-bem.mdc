@@ -1,0 +1,102 @@
+---
+description: FSD-архитектура и BEM-классы для front (Vue)
+globs: front/**
+alwaysApply: false
+---
+
+# Front: FSD + BEM
+
+Работаем только в `front/src/`. Стили — **Tailwind**. Семантика и навигация по коду — **BEM-классы** на каждом блоке.
+
+## Слои FSD (сверху вниз)
+
+```
+app/       → инициализация, layouts, router
+pages/     → экраны по маршрутам (тонкие, собирают widgets/features)
+widgets/   → крупные блоки UI (sidebar, footer)
+features/  → пользовательские сценарии (auth, room-chat)
+entities/  → бизнес-сущности (user, room)
+shared/    → ui-kit, api, lib, config, composables
+```
+
+### Импорты (строго вниз)
+
+| Слой       | Можно импортировать из                     |
+| ---------- | ------------------------------------------ |
+| `app`      | pages, widgets, features, entities, shared |
+| `pages`    | widgets, features, entities, shared        |
+| `widgets`  | features, entities, shared                 |
+| `features` | entities, shared                           |
+| `entities` | shared                                     |
+| `shared`   | только shared                              |
+
+Запрещено: `shared` → `pages`, `entities` → `features`, кросс-импорты между `pages/*`.
+
+### Куда класть код
+
+- Новый экран → `pages/<name>/`
+- Форма логина, верификация → `features/auth/ui/`
+- Store пользователя → `entities/user/model/`
+- HTTP, сокеты → `shared/api/`
+- Кнопка, Card → `shared/ui/` (shadcn-vue)
+- Sidebar, footer → `widgets/`
+
+`pages/` не содержит бизнес-логику — только композиция и роутинг.
+
+## BEM-именование
+
+Формат: `block__element--modifier`
+
+- **block** — kebab-case, отражает смысл: `app-sidebar`, `login-form`, `youtube-page`
+- **element** — часть блока: `app-sidebar__nav-link`
+- **modifier** — вариант: `app-sidebar__nav-link--active`, `app-sidebar--collapsed`
+
+### Правила
+
+1. У каждого `.vue` в `pages/`, `widgets/`, `features/`, `app/layout/` — **один корневой block** на корневом элементе.
+2. BEM-классы **дополняют** Tailwind, не заменяют: `class="login-form__submit w-full"`.
+3. Активное состояние — модификатор: `app-sidebar__nav-link--active`, не отдельный блок.
+4. Не использовать BEM внутри `shared/ui/*` (shadcn) — только в прикладных компонентах.
+5. Имена блоков в проекте:
+
+| Компонент          | Block                 |
+| ------------------ | --------------------- |
+| sidebar widget     | `app-sidebar`         |
+| footer widget      | `app-footer`          |
+| default layout     | `app-layout`          |
+| auth layout        | `auth-layout`         |
+| HomePage           | `home-page`           |
+| AuthPage           | `auth-page`           |
+| Login              | `login-form`          |
+| Register           | `register-form`       |
+| YoutubePage        | `youtube-page`        |
+| SoundcloudPage     | `soundcloud-page`     |
+| ProfilePage        | `profile-page`        |
+| RoomPage           | `room-page`           |
+| VerificationDialog | `verification-dialog` |
+
+### Пример
+
+```vue
+<template>
+  <div class="youtube-page p-6">
+    <div class="youtube-page__grid grid ...">
+      <Card class="youtube-page__card youtube-page__card--create">
+        <CardHeader class="youtube-page__card-header">
+          <CardTitle class="youtube-page__card-title">...</CardTitle>
+        </CardHeader>
+        <Button class="youtube-page__submit w-full">Create</Button>
+      </Card>
+    </div>
+  </div>
+</template>
+```
+
+## Чеклист перед завершением
+
+- [ ] Файл лежит в правильном слое FSD
+- [ ] Импорты не нарушают иерархию
+- [ ] Корневой элемент имеет BEM block
+- [ ] Ключевые элементы имеют `block__element`
+- [ ] Состояния — `block__element--modifier`
+- [ ] Tailwind сохранён для вёрстки и темы

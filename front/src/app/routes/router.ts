@@ -10,7 +10,7 @@ import {
   ProfilePage,
 } from '@/pages'
 import { DefaultLayout, AuthLayout } from '@/app/layout'
-import { authStore } from '@/shared/store/auth.store'
+import { authStore } from '@/entities/user'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -36,7 +36,7 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   // Для страниц авторизации доступ всегда открыт
   if (to.path.startsWith('/auth')) {
     return next()

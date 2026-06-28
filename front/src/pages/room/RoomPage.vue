@@ -7,7 +7,7 @@ import type { VideoRoom, VideoState } from '@/shared/api/room.types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
-import { useChat } from '@/shared/composables/useChat'
+import { useChat } from '@/features/room-chat'
 
 const route = useRoute()
 const router = useRouter()
@@ -582,82 +582,88 @@ function copyLink() {
 </script>
 
 <template>
-  <div class="p-6 space-y-4">
-    <Card v-if="loading">
-      <CardContent class="p-6">
-        <Skeleton class="w-full h-96" />
+  <div class="room-page p-6 space-y-4">
+    <Card v-if="loading" class="room-page__loading">
+      <CardContent class="room-page__loading-content p-6">
+        <Skeleton class="room-page__skeleton w-full h-96" />
       </CardContent>
     </Card>
 
-    <div v-else-if="error" class="text-center space-y-4">
-      <p class="text-red-500">{{ error }}</p>
-      <Button @click="router.push('/')">Go Home</Button>
+    <div v-else-if="error" class="room-page__error text-center space-y-4">
+      <p class="room-page__error-text text-red-500">{{ error }}</p>
+      <Button class="room-page__error-action" @click="router.push('/')">Go Home</Button>
     </div>
 
-    <div v-else-if="room" class="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle class="flex items-center justify-between">
-            <span>Room: {{ room.id.slice(0, 8) }}...</span>
-            <span class="text-sm font-normal"> Participants: {{ participants }} </span>
+    <div v-else-if="room" class="room-page__content space-y-4">
+      <Card class="room-page__player-card">
+        <CardHeader class="room-page__player-header">
+          <CardTitle class="room-page__player-title flex items-center justify-between">
+            <span class="room-page__room-id">Room: {{ room.id.slice(0, 8) }}...</span>
+            <span class="room-page__participants text-sm font-normal">
+              Participants: {{ participants }}
+            </span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent class="room-page__player-content">
           <div
             id="youtube-player-container"
-            class="aspect-video w-full bg-black rounded-lg overflow-hidden"
-            style="position: relative; min-height: 360px">
+            class="room-page__player aspect-video w-full bg-black rounded-lg overflow-hidden"
+            style="position: relative; min-height: 360px"
+          >
             <div
               id="youtube-player"
-              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%"></div>
+              class="room-page__player-iframe"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%"
+            />
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent class="p-4">
-          <p class="text-sm text-muted-foreground">
+      <Card class="room-page__share-card">
+        <CardContent class="room-page__share-content p-4">
+          <p class="room-page__share-hint text-sm text-muted-foreground">
             Share this room with others to watch together!
           </p>
-          <div class="mt-2 flex items-center gap-2">
+          <div class="room-page__share-actions mt-2 flex items-center gap-2">
             <input
               :value="currentUrl"
               readonly
-              class="flex-1 px-3 py-2 border rounded-md text-sm" />
-            <Button size="sm" @click="copyLink"> Copy Link </Button>
+              class="room-page__share-input flex-1 px-3 py-2 border rounded-md text-sm"
+            />
+            <Button class="room-page__share-button" size="sm" @click="copyLink">Copy Link</Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Chat</CardTitle>
+      <Card class="room-page__chat-card">
+        <CardHeader class="room-page__chat-header">
+          <CardTitle class="room-page__chat-title">Chat</CardTitle>
         </CardHeader>
-        <CardContent class="space-y-2">
-          <div class="h-64 overflow-y-auto border rounded-md p-2 space-y-1 text-sm">
-            <div v-for="(msg, idx) in messages" :key="idx">
-              <span class="font-semibold">{{ msg.author }}: </span>
-              <span>{{ msg.text }}</span>
+        <CardContent class="room-page__chat-content space-y-2">
+          <div class="room-page__chat-messages h-64 overflow-y-auto border rounded-md p-2 space-y-1 text-sm">
+            <div v-for="(msg, idx) in messages" :key="idx" class="room-page__chat-message">
+              <span class="room-page__chat-author font-semibold">{{ msg.author }}: </span>
+              <span class="room-page__chat-text">{{ msg.text }}</span>
               <a
                 v-if="msg.trackUrl"
                 :href="msg.trackUrl"
                 target="_blank"
                 rel="noopener"
-                class="text-blue-500 underline ml-1"
+                class="room-page__chat-track-link text-blue-500 underline ml-1"
               >
                 track
               </a>
             </div>
           </div>
-          <div class="flex gap-2">
+          <div class="room-page__chat-form flex gap-2">
             <input
               v-model="newMessage"
               type="text"
-              class="flex-1 px-3 py-2 border rounded-md text-sm"
+              class="room-page__chat-input flex-1 px-3 py-2 border rounded-md text-sm"
               placeholder="Send message or paste track link"
               @keyup.enter="send"
             />
-            <Button size="sm" @click="send">Send</Button>
+            <Button class="room-page__chat-submit" size="sm" @click="send">Send</Button>
           </div>
         </CardContent>
       </Card>

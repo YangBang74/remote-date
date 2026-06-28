@@ -10,10 +10,10 @@ import {
   Input,
   Button,
   Label,
-  VerificationDialog,
 } from '@/shared/ui'
 import { authAPI } from '@/shared/api/auth.api'
-import { authStore } from '@/shared/store/auth.store'
+import { authStore } from '@/entities/user'
+import VerificationDialog from './VerificationDialog.vue'
 
 const emit = defineEmits<{
   (e: 'login'): void
@@ -79,32 +79,34 @@ const handleDialogClose = () => {
 </script>
 
 <template>
-  <Card class="w-full max-w-md">
-    <CardHeader>
-      <CardTitle class="text-2xl font-bold">Register</CardTitle>
-      <CardDescription>Register to your account to continue</CardDescription>
+  <Card class="register-form w-full max-w-md">
+    <CardHeader class="register-form__header">
+      <CardTitle class="register-form__title text-2xl font-bold">Register</CardTitle>
+      <CardDescription class="register-form__description">Register to your account to continue</CardDescription>
     </CardHeader>
-    <CardContent>
-      <form class="flex flex-col items-stretch justify-center gap-4" @submit="handleRegister">
-        <div v-if="error" class="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+    <CardContent class="register-form__content">
+      <form class="register-form__form flex flex-col items-stretch justify-center gap-4" @submit="handleRegister">
+        <div v-if="error" class="register-form__error p-3 text-sm text-destructive bg-destructive/10 rounded-md">
           {{ error }}
         </div>
-        <div class="space-y-2">
-          <Label for="email">Email</Label>
+        <div class="register-form__field register-form__field--email space-y-2">
+          <Label class="register-form__label" for="email">Email</Label>
           <Input
             id="email"
             v-model="email"
+            class="register-form__input register-form__input--email"
             type="email"
             placeholder="Email"
             required
             :disabled="isLoading"
           />
         </div>
-        <div class="space-y-2">
-          <Label for="password">Password</Label>
+        <div class="register-form__field register-form__field--password space-y-2">
+          <Label class="register-form__label" for="password">Password</Label>
           <Input
             id="password"
             v-model="password"
+            class="register-form__input register-form__input--password"
             type="password"
             variant="password"
             placeholder="Password"
@@ -112,11 +114,12 @@ const handleDialogClose = () => {
             :disabled="isLoading"
           />
         </div>
-        <div class="space-y-2">
-          <Label for="confirm-password">Confirm Password</Label>
+        <div class="register-form__field register-form__field--confirm space-y-2">
+          <Label class="register-form__label" for="confirm-password">Confirm Password</Label>
           <Input
             id="confirm-password"
             v-model="confirmPassword"
+            class="register-form__input register-form__input--confirm"
             type="password"
             variant="password"
             placeholder="Confirm Password"
@@ -124,16 +127,17 @@ const handleDialogClose = () => {
             :disabled="isLoading"
           />
         </div>
-        <Button type="submit" class="w-full" :disabled="isLoading">
+        <Button type="submit" class="register-form__submit w-full" :disabled="isLoading">
           {{ isLoading ? 'Registering...' : 'Register' }}
         </Button>
-        <div class="space-y-2">
-          <p class="text-center text-sm text-muted-foreground">
+        <div class="register-form__footer space-y-2">
+          <p class="register-form__switch text-center text-sm text-muted-foreground">
             Already have an account?
             <button
               type="button"
-              class="text-foreground hover:text-primary/80 transition"
-              @click="emit('login')">
+              class="register-form__switch-link text-foreground hover:text-primary/80 transition"
+              @click="emit('login')"
+            >
               Login
             </button>
           </p>
@@ -143,6 +147,7 @@ const handleDialogClose = () => {
   </Card>
 
   <VerificationDialog
+    class="register-form__verification"
     :open="showVerificationDialog"
     :email="registeredEmail"
     @update:open="handleDialogClose"

@@ -52,15 +52,14 @@ watch(
 </script>
 
 <template>
-  <Card class="h-full flex flex-col gap-2">
-    <CardHeader class="pb-3">
-      <CardTitle class="text-base">Chat</CardTitle>
+  <Card class="room-chat-panel h-full flex flex-col gap-2">
+    <CardHeader class="room-chat-panel__header pb-3">
+      <CardTitle class="room-chat-panel__title text-base">Chat</CardTitle>
     </CardHeader>
-    <CardContent class="flex-1 flex flex-col gap-2 pt-0">
-      <!-- Messages -->
+    <CardContent class="room-chat-panel__content flex-1 flex flex-col gap-2 pt-0">
       <div
         ref="messagesContainer"
-        class="flex-1 overflow-y-auto border rounded-md p-2 space-y-2 text-sm bg-muted/30 h-full max-h-80! md:max-h-96!"
+        class="room-chat-panel__messages flex-1 overflow-y-auto border rounded-md p-2 space-y-2 text-sm bg-muted/30 h-full max-h-80! md:max-h-96!"
       >
         <div
           v-if="!sortedMessages.length && !loading"

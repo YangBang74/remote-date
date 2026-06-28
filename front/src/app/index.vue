@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
-import { authStore } from '@/shared/store/auth.store'
+import { authStore } from '@/entities/user'
 
 // Инициализируем auth store при загрузке приложения
 onMounted(async () => {

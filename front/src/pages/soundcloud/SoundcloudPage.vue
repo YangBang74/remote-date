@@ -60,34 +60,39 @@ async function joinRoom() {
 </script>
 
 <template>
-  <div class="p-6">
-    <div class="grid md:grid-cols-2 grid-cols-1 gap-6 w-full max-w-4xl">
-      <Card class="flex-1 min-w-0">
-        <CardHeader>
-          <CardTitle>Create SoundCloud room</CardTitle>
+  <div class="soundcloud-page p-6">
+    <div class="soundcloud-page__grid grid md:grid-cols-2 grid-cols-1 gap-6 w-full max-w-4xl">
+      <Card class="soundcloud-page__card soundcloud-page__card--create flex-1 min-w-0">
+        <CardHeader class="soundcloud-page__card-header">
+          <CardTitle class="soundcloud-page__card-title">Create SoundCloud room</CardTitle>
         </CardHeader>
-        <CardContent class="space-y-4">
-          <div class="space-y-2">
-            <Label for="soundcloud-url">Optional: paste SoundCloud track URL</Label>
+        <CardContent class="soundcloud-page__card-content space-y-4">
+          <div class="soundcloud-page__field space-y-2">
+            <Label class="soundcloud-page__label" for="soundcloud-url">Optional: paste SoundCloud track URL</Label>
             <Input
               id="soundcloud-url"
               v-model="soundcloudUrl"
+              class="soundcloud-page__input"
               type="text"
               placeholder="https://soundcloud.com/..."
             />
-            <p class="text-sm text-muted-foreground">
+            <p class="soundcloud-page__hint text-sm text-muted-foreground">
               Create an empty room and choose tracks inside, or start with a track URL.
             </p>
-            <p v-if="createError" class="text-sm text-red-500">{{ createError }}</p>
+            <p v-if="createError" class="soundcloud-page__error text-sm text-red-500">{{ createError }}</p>
           </div>
-          <div class="flex gap-2">
-            <Button @click="createRoom(false)" class="flex-1" :disabled="createLoading">
+          <div class="soundcloud-page__actions flex gap-2">
+            <Button
+              class="soundcloud-page__submit soundcloud-page__submit--empty flex-1"
+              @click="createRoom(false)"
+              :disabled="createLoading"
+            >
               {{ createLoading ? 'Creating...' : 'Create empty room' }}
             </Button>
             <Button
               v-if="soundcloudUrl.trim()"
+              class="soundcloud-page__submit soundcloud-page__submit--with-track flex-1"
               variant="secondary"
-              class="flex-1"
               @click="createRoom(true)"
               :disabled="createLoading"
             >
@@ -96,23 +101,29 @@ async function joinRoom() {
           </div>
         </CardContent>
       </Card>
-      <Card class="flex-1 min-w-0">
-        <CardHeader>
-          <CardTitle>Join SoundCloud room</CardTitle>
+      <Card class="soundcloud-page__card soundcloud-page__card--join flex-1 min-w-0">
+        <CardHeader class="soundcloud-page__card-header">
+          <CardTitle class="soundcloud-page__card-title">Join SoundCloud room</CardTitle>
         </CardHeader>
-        <CardContent class="space-y-4 flex flex-col justify-between h-full">
-          <div class="space-y-2">
-            <Label for="room-id">Room ID</Label>
+        <CardContent class="soundcloud-page__card-content space-y-4 flex flex-col justify-between h-full">
+          <div class="soundcloud-page__field space-y-2">
+            <Label class="soundcloud-page__label" for="room-id">Room ID</Label>
             <Input
               id="room-id"
               v-model="roomIdToJoin"
+              class="soundcloud-page__input"
               type="text"
               placeholder="Enter room ID to join"
               @keyup.enter="joinRoom"
             />
-            <p v-if="joinError" class="text-sm text-red-500">{{ joinError }}</p>
+            <p v-if="joinError" class="soundcloud-page__error text-sm text-red-500">{{ joinError }}</p>
           </div>
-          <Button variant="secondary" @click="joinRoom" :disabled="joinLoading">
+          <Button
+            class="soundcloud-page__submit soundcloud-page__submit--join"
+            variant="secondary"
+            @click="joinRoom"
+            :disabled="joinLoading"
+          >
             {{ joinLoading ? 'Joining...' : 'Join room' }}
           </Button>
         </CardContent>

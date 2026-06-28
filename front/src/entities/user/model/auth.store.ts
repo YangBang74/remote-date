@@ -1,51 +1,24 @@
 import { ref, computed, type Ref } from 'vue'
-import { authAPI } from '../api/auth.api'
-import { tokenService } from '../api/token.service'
 import { useRouter } from 'vue-router'
+import { authAPI } from '@/shared/api/auth.api'
+import { tokenService } from '@/shared/api/token.service'
+import type { User } from './types'
 
 const router = useRouter()
 
-export interface User {
-  userId: string
-  email: string
-  firstName?: string
-  lastName?: string
-  birthDate?: string
-  sex?: 'male' | 'female' | 'other'
-  avatarUrl?: string
-  verified: boolean
-  createdAt: string
-}
-
-// Глобальное состояние пользователя
 const user: Ref<User | null> = ref(null)
 const isLoading = ref(false)
 const isInitialized = ref(false)
 
 export const authStore = {
-  /**
-   * Получить данные пользователя
-   */
   user: computed(() => user.value),
 
-  /**
-   * Проверить, авторизован ли пользователь
-   */
   isAuthenticated: computed(() => !!user.value && tokenService.hasTokens()),
 
-  /**
-   * Проверить, инициализирован ли store
-   */
   isInitialized: computed(() => isInitialized.value),
 
-  /**
-   * Состояние загрузки
-   */
   isLoading: computed(() => isLoading.value),
 
-  /**
-   * Инициализация - проверка токенов и загрузка данных пользователя
-   */
   async initialize(): Promise<boolean> {
     if (isInitialized.value) {
       return !!user.value
@@ -63,8 +36,7 @@ export const authStore = {
       user.value = userData
       isInitialized.value = true
       return true
-    } catch (error) {
-      // Если токены невалидны, очищаем их
+    } catch {
       tokenService.clearTokens()
       user.value = null
       isInitialized.value = true
@@ -74,16 +46,10 @@ export const authStore = {
     }
   },
 
-  /**
-   * Установить данные пользователя
-   */
   setUser(userData: User | null): void {
     user.value = userData
   },
 
-  /**
-   * Обновить данные пользователя
-   */
   async refreshUser(): Promise<void> {
     if (!tokenService.hasTokens()) {
       user.value = null
@@ -93,20 +59,17 @@ export const authStore = {
     try {
       const userData = await authAPI.getMe()
       user.value = userData
-    } catch (error) {
-      // Если не удалось обновить, возможно токены истекли
+    } catch {
       tokenService.clearTokens()
       user.value = null
     }
   },
 
-  /**
-   * Выход из системы
-   */
   async logout(): Promise<void> {
     try {
       await authAPI.logout()
-    } catch (error) {
+    } catch {
+      // ignore
     } finally {
       user.value = null
       tokenService.clearTokens()
@@ -114,9 +77,6 @@ export const authStore = {
     }
   },
 
-  /**
-   * Сброс состояния (для тестирования)
-   */
   reset(): void {
     user.value = null
     isLoading.value = false
